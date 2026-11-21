@@ -1,0 +1,136 @@
+
+name: Sao-2X Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub Release tag"
+        required: true
+        type: string
+        default: "sao-2x-v0.1.0"
+
+      release_notes:
+        description: "Release notes"
+        required: false
+        type: string
+        default: "Automated Sao-2X development build."
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release Sao-2X
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            g++ \
+            mingw-w64 \
+            zip
+
+      - name: Configure Linux Build
+        run: |
+          cmake -S . -B build/linux \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON
+
+      - name: Build Linux
+        run: |
+          cmake --build build/linux --parallel
+
+      - name: Test Linux
+        run: |
+          ctest --test-dir build/linux \
+            --output-on-failure
+
+      - name: Package Linux
+        run: |
+          mkdir -p dist/linux
+
+          cmake --install build/linux \
+            --prefix "$PWD/dist/linux"
+
+          tar -czf \
+            "dist/sao-2x-${{ inputs.release_tag }}-linux-x64.tar.gz" \
+            -C dist/linux .
+
+      - name: Configure Windows Build
+        run: |
+          cmake -S . -B build/windows \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+            -DBUILD_TESTING=OFF
+
+      - name: Validate Release Version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          EXPECTED_TAG="sao-2x-v$(cat VERSION)"
+
+          if [ "$RELEASE_TAG" != "$EXPECTED_TAG" ]; then
+            echo "Release tag must be $EXPECTED_TAG"
+            exit 1
+          fi
+
+      - name: Build Windows
+        run: |
+          cmake --build build/windows --parallel
+
+      - name: Package Windows
+        run: |
+          mkdir -p dist/windows
+
+          cmake --install build/windows \
+            --prefix "$PWD/dist/windows"
+
+          cd dist/windows
+
+          zip -r \
+            "../sao-2x-${{ inputs.release_tag }}-windows-x64.zip" \
+            .
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^sao-2x-v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]]; then
+            echo "Invalid release tag."
+            exit 1
+          fi
+
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --title "Sao-2X $RELEASE_TAG" \
+              --notes "$RELEASE_NOTES"
+          fi
+
+      - name: Upload Release Packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            dist/*.tar.gz \
+            dist/*.zip \
+            --clobber
+
+      - name: Build Summary
+        run: |
+          echo "## Sao-2X Build Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release: ${{ inputs.release_tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Linux x64 package" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Windows x64 package" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Packages uploaded to GitHub Releases" >> "$GITHUB_STEP_SUMMARY"
