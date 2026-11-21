@@ -24,6 +24,9 @@ include(GNUInstallDirs)
 
 add_library(sao2x
     engine/src/engine.cpp
+    engine/src/config.cpp
+    engine/src/logger.cpp
+    engine/src/application.cpp
 )
 
 add_library(Sao2X::Engine ALIAS sao2x)
@@ -72,7 +75,7 @@ if(BUILD_TESTING)
     endif()
 
     add_test(
-        NAME Sao2X.SmokeTest
+        NAME Sao2X.CoreTests
         COMMAND sao2x_tests
     )
 endif()
