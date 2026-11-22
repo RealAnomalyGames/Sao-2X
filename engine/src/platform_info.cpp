@@ -113,8 +113,6 @@ PlatformInfo PlatformDetector::detect() {
     result.version = "Unknown";
 
 #elif defined(__APPLE__)
-    #include <TargetConditionals.h>
-
     #if TARGET_OS_IPHONE
         result.type = PlatformType::iOS;
         result.name = "iOS";
