@@ -43,19 +43,30 @@ void test_filesystem() {
     const auto test_file =
         test_directory / "test.txt";
 
+    // Remove leftovers from a previous failed test.
+    if (sao::FileSystem::exists(test_directory)) {
+        assert(sao::FileSystem::remove_directory(test_directory));
+    }
+
+    // Create the test directory.
     assert(sao::FileSystem::create_directories(test_directory));
     assert(sao::FileSystem::is_directory(test_directory));
 
-    sao::FileSystem::write_text(test_file, "Sao-2X platform test");
+    // Write and read a file.
+    sao::FileSystem::write_text(
+        test_file,
+        "Sao-2X platform test"
+    );
 
     assert(sao::FileSystem::exists(test_file));
     assert(sao::FileSystem::is_file(test_file));
 
-    const std::string contents =
-        sao::FileSystem::read_text(test_file);
+    assert(
+        sao::FileSystem::read_text(test_file) ==
+        "Sao-2X platform test"
+    );
 
-    assert(contents == "Sao-2X platform test");
-
+    // Append text.
     sao::FileSystem::append_text(test_file, " passed");
 
     assert(
@@ -63,6 +74,7 @@ void test_filesystem() {
         "Sao-2X platform test passed"
     );
 
+    // Clean up.
     assert(sao::FileSystem::remove_file(test_file));
     assert(sao::FileSystem::remove_directory(test_directory));
 }
