@@ -23,7 +23,7 @@ bool register_window_class(HINSTANCE instance) {
     window_class.style = CS_HREDRAW | CS_VREDRAW;
     window_class.lpfnWndProc = Win32Window::window_procedure;
     window_class.hInstance = instance;
-    window_class.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    window_class.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
     window_class.hbrBackground =
         reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     window_class.lpszClassName = WINDOW_CLASS_NAME;
