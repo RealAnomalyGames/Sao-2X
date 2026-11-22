@@ -66,3 +66,11 @@ void test_filesystem() {
     assert(sao::FileSystem::remove_file(test_file));
     assert(sao::FileSystem::remove_directory(test_directory));
 }
+
+int main() {
+    test_platform_detection();
+    test_platform_lifecycle();
+    test_filesystem();
+
+    return 0;
+}
