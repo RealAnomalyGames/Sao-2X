@@ -36,6 +36,9 @@ void test_platform_lifecycle() {
     assert(!platform.is_initialized());
 }
 
+
+#include <stdexcept>
+
 void test_filesystem() {
     const auto test_directory =
         sao::FileSystem::current_directory() / "sao2x_test";
@@ -43,40 +46,69 @@ void test_filesystem() {
     const auto test_file =
         test_directory / "test.txt";
 
-    // Remove leftovers from a previous failed test.
+    // Remove leftovers from previous runs.
     if (sao::FileSystem::exists(test_directory)) {
-        assert(sao::FileSystem::remove_directory(test_directory));
+        if (!sao::FileSystem::remove_directory(test_directory)) {
+            throw std::runtime_error(
+                "Could not remove previous filesystem test directory."
+            );
+        }
     }
 
-    // Create the test directory.
-    assert(sao::FileSystem::create_directories(test_directory));
-    assert(sao::FileSystem::is_directory(test_directory));
+    // Create the directory.
+    const bool created =
+        sao::FileSystem::create_directories(test_directory);
 
-    // Write and read a file.
+    if (!created || !sao::FileSystem::is_directory(test_directory)) {
+        throw std::runtime_error(
+            "Filesystem test directory could not be created: " +
+            test_directory.string()
+        );
+    }
+
+    // Write a file.
     sao::FileSystem::write_text(
         test_file,
         "Sao-2X platform test"
     );
 
-    assert(sao::FileSystem::exists(test_file));
-    assert(sao::FileSystem::is_file(test_file));
+    if (!sao::FileSystem::is_file(test_file)) {
+        throw std::runtime_error(
+            "Filesystem test file was not created."
+        );
+    }
 
-    assert(
-        sao::FileSystem::read_text(test_file) ==
-        "Sao-2X platform test"
-    );
+    // Read the file.
+    if (sao::FileSystem::read_text(test_file) !=
+        "Sao-2X platform test") {
+        throw std::runtime_error(
+            "Filesystem text reading test failed."
+        );
+    }
 
     // Append text.
     sao::FileSystem::append_text(test_file, " passed");
 
-    assert(
-        sao::FileSystem::read_text(test_file) ==
-        "Sao-2X platform test passed"
-    );
+    if (sao::FileSystem::read_text(test_file) !=
+        "Sao-2X platform test passed") {
+        throw std::runtime_error(
+            "Filesystem append test failed."
+        );
+    }
 
-    // Clean up.
-    assert(sao::FileSystem::remove_file(test_file));
-    assert(sao::FileSystem::remove_directory(test_directory));
+    // Remove the file.
+    if (!sao::FileSystem::remove_file(test_file)) {
+        throw std::runtime_error(
+            "Could not remove filesystem test file."
+        );
+    }
+
+    // Remove the directory.
+    if (!sao::FileSystem::remove_directory(test_directory)) {
+        throw std::runtime_error(
+            "Could not remove filesystem test directory."
+        );
+    }
 }
 
 int main() {
