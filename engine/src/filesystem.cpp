@@ -31,21 +31,38 @@ bool FileSystem::is_directory(const Path& path) {
 bool FileSystem::create_directory(const Path& path) {
     std::error_code error;
 
-    if (std::filesystem::exists(path, error)) {
-        return !error && std::filesystem::is_directory(path, error);
+    if (std::filesystem::is_directory(path, error)) {
+        return true;
     }
 
-    return std::filesystem::create_directory(path, error) && !error;
+    error.clear();
+
+    const bool created = std::filesystem::create_directory(path, error);
+
+    if (error) {
+        return false;
+    }
+
+    return created || std::filesystem::is_directory(path, error);
 }
 
 bool FileSystem::create_directories(const Path& path) {
     std::error_code error;
 
-    if (std::filesystem::exists(path, error)) {
-        return !error && std::filesystem::is_directory(path, error);
+    if (std::filesystem::is_directory(path, error)) {
+        return true;
     }
 
-    return std::filesystem::create_directories(path, error) && !error;
+    error.clear();
+
+    const bool created =
+        std::filesystem::create_directories(path, error);
+
+    if (error) {
+        return false;
+    }
+
+    return created || std::filesystem::is_directory(path, error);
 }
 
 bool FileSystem::remove_file(const Path& path) {
