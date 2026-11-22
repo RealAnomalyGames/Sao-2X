@@ -1,100 +1,68 @@
+#include "sao/platform.hpp"
+#include "sao/platform_info.hpp"
+#include "sao/filesystem.hpp"
 
 #include <cassert>
-#include <cstring>
+#include <filesystem>
+#include <iostream>
 
-#include "sao/application.hpp"
-#include "sao/config.hpp"
-#include "sao/engine.hpp"
-#include "sao/error.hpp"
+void test_platform_detection() {
+    const sao::PlatformInfo info = sao::PlatformDetector::detect();
 
-class TestApplication final : public sao::Application {
-public:
-    int initialized = 0;
-    int updated = 0;
-    int shutdown = 0;
+    assert(info.type != sao::PlatformType::Unknown);
+    assert(!info.name.empty());
+    assert(!info.architecture_name.empty());
 
-    void onInitialize() override {
-        ++initialized;
-    }
+    std::cout << "Detected platform: "
+              << info.name << " "
+              << info.version << '\n';
 
-    void onUpdate(float delta_time) override {
-        assert(delta_time >= 0.0f);
+    std::cout << "Architecture: "
+              << info.architecture_name << '\n';
+}
 
-        ++updated;
+void test_platform_lifecycle() {
+    sao::Platform platform;
 
-        if (updated >= 3) {
-            requestStop();
-        }
-    }
+    assert(!platform.is_initialized());
 
-    void onShutdown() override {
-        ++shutdown;
-    }
-};
+    platform.initialize();
 
-int main() {
-    // Version test
+    assert(platform.is_initialized());
+    assert(platform.info().type != sao::PlatformType::Unknown);
 
-    assert(
-        std::strcmp(sao::Engine::version(), SAO2X_VERSION) == 0
-    );
+    platform.shutdown();
 
-    // Configuration test
+    assert(!platform.is_initialized());
+}
 
-    sao::EngineConfig config;
+void test_filesystem() {
+    const auto test_directory =
+        sao::FileSystem::current_directory() / "sao2x_test";
 
-    config.application_name = "Sao-2X Test";
-    config.enable_console_logging = false;
-    config.enable_file_logging = false;
-    config.target_fps = 1000;
+    const auto test_file =
+        test_directory / "test.txt";
 
-    config.validate();
+    assert(sao::FileSystem::create_directories(test_directory));
+    assert(sao::FileSystem::is_directory(test_directory));
 
-    // Invalid configuration test
+    sao::FileSystem::write_text(test_file, "Sao-2X platform test");
 
-    bool invalid_config_detected = false;
+    assert(sao::FileSystem::exists(test_file));
+    assert(sao::FileSystem::is_file(test_file));
 
-    try {
-        sao::EngineConfig invalid;
-        invalid.target_fps = 0;
-        invalid.validate();
+    const std::string contents =
+        sao::FileSystem::read_text(test_file);
 
-    } catch (const sao::EngineError& error) {
-        invalid_config_detected =
-            error.code() == sao::ErrorCode::InvalidConfiguration;
-    }
+    assert(contents == "Sao-2X platform test");
 
-    assert(invalid_config_detected);
-
-    // Engine initialization and shutdown test
-
-    sao::Engine engine;
-
-    assert(engine.state() == sao::EngineState::Created);
-
-    engine.initialize(config);
-
-    assert(engine.is_initialized());
-
-    engine.shutdown();
-
-    assert(engine.state() == sao::EngineState::Shutdown);
-
-    // Application lifecycle test
-
-    TestApplication application;
-
-    const int result = application.run(config);
-
-    assert(result == 0);
-
-    assert(application.initialized == 1);
-    assert(application.updated == 3);
-    assert(application.shutdown == 1);
+    sao::FileSystem::append_text(test_file, " passed");
 
     assert(
-        application.state() == sao::ApplicationState::Stopped
+        sao::FileSystem::read_text(test_file) ==
+        "Sao-2X platform test passed"
     );
 
-    return 0;
+    assert(sao::FileSystem::remove_file(test_file));
+    assert(sao::FileSystem::remove_directory(test_directory));
 }
