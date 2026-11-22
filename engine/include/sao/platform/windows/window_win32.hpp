@@ -10,6 +10,13 @@ namespace sao {
 
 class Win32Window final : public Window {
 public:
+    static LRESULT CALLBACK window_procedure(
+        HWND hwnd,
+        UINT message,
+        WPARAM wparam,
+        LPARAM lparam
+    );
+
     explicit Win32Window(const WindowConfig& config);
     ~Win32Window() override;
 
@@ -31,13 +38,6 @@ public:
     WindowSize size() const noexcept override;
 
 private:
-    static LRESULT CALLBACK window_procedure(
-        HWND hwnd,
-        UINT message,
-        WPARAM wparam,
-        LPARAM lparam
-    );
-
     static std::wstring to_wide(const std::string& value);
 
     HWND handle_ = nullptr;
