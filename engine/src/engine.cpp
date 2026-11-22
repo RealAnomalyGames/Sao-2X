@@ -25,12 +25,20 @@ void Engine::initialize(const EngineConfig& config) {
     try {
         platform_.initialize();
 
-        logger_.initialize(config);
-
         config_ = config;
+
+        logger_.initialize(
+            config_.log_level,
+            config_.enable_console_logging,
+            config_.enable_file_logging,
+            config_.log_file
+        );
+
         logger_.info("Sao-2X engine initialized.");
+
         state_ = EngineState::Initialized;
-    } catch (...) {
+    }
+    catch (...) {
         platform_.shutdown();
         throw;
     }
