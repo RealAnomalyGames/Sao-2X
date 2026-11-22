@@ -3,7 +3,10 @@
 
 #include "sao/window.hpp"
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
+
 #include <windows.h>
 
 namespace sao {
