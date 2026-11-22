@@ -2,7 +2,9 @@
 #include "sao/platform_info.hpp"
 
 #if defined(_WIN32)
+    #ifndef NOMINMAX
     #define NOMINMAX
+    #endif
     #include <windows.h>
 #elif defined(__linux__)
     #include <sys/utsname.h>
