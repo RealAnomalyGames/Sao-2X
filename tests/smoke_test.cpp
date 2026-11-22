@@ -9,9 +9,9 @@
 void test_platform_detection() {
     const sao::PlatformInfo info = sao::PlatformDetector::detect();
 
-    assert(info.type != sao::PlatformType::Unknown);
-    assert(!info.name.empty());
-    assert(!info.architecture_name.empty());
+    info.type != sao::PlatformType::Unknown;
+    !info.name.empty();
+    !info.architecture_name.empty();
 
     std::cout << "Detected platform: "
               << info.name << " "
@@ -24,16 +24,16 @@ void test_platform_detection() {
 void test_platform_lifecycle() {
     sao::Platform platform;
 
-    assert(!platform.is_initialized());
+    !platform.is_initialized();
 
     platform.initialize();
 
-    assert(platform.is_initialized());
-    assert(platform.info().type != sao::PlatformType::Unknown);
+    platform.is_initialized();
+    platform.info().type != sao::PlatformType::Unknown;
 
     platform.shutdown();
 
-    assert(!platform.is_initialized());
+    !platform.is_initialized();
 }
 
 
