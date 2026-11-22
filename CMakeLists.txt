@@ -22,12 +22,41 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(CTest)
 include(GNUInstallDirs)
 
-add_library(sao2x
+# --------------------------------------------------
+# Engine Sources
+# --------------------------------------------------
+
+set(SAO2X_SOURCES
     engine/src/engine.cpp
     engine/src/config.cpp
     engine/src/logger.cpp
     engine/src/application.cpp
+
+    # Milestone 02: Platform Abstraction
+    engine/src/platform.cpp
+    engine/src/platform_info.cpp
+    engine/src/filesystem.cpp
 )
+
+# --------------------------------------------------
+# Platform Window Backend
+# --------------------------------------------------
+
+if(WIN32)
+    list(APPEND SAO2X_SOURCES
+        engine/src/platform/windows/window_win32.cpp
+    )
+else()
+    list(APPEND SAO2X_SOURCES
+        engine/src/platform/unsupported/window_unsupported.cpp
+    )
+endif()
+
+# --------------------------------------------------
+# Engine Library
+# --------------------------------------------------
+
+add_library(sao2x ${SAO2X_SOURCES})
 
 add_library(Sao2X::Engine ALIAS sao2x)
 
@@ -38,8 +67,21 @@ target_include_directories(sao2x
 )
 
 target_compile_definitions(sao2x
-    PUBLIC SAO2X_VERSION="${PROJECT_VERSION}"
+    PUBLIC
+        SAO2X_VERSION="${PROJECT_VERSION}"
 )
+
+# Windows API dependencies
+if(WIN32)
+    target_link_libraries(sao2x PRIVATE
+        user32
+        gdi32
+    )
+endif()
+
+# --------------------------------------------------
+# Main Application
+# --------------------------------------------------
 
 add_executable(sao2x_app
     engine/src/main.cpp
@@ -58,6 +100,10 @@ if(MINGW)
         -static-libstdc++
     )
 endif()
+
+# --------------------------------------------------
+# Tests
+# --------------------------------------------------
 
 if(BUILD_TESTING)
     add_executable(sao2x_tests
@@ -79,6 +125,10 @@ if(BUILD_TESTING)
         COMMAND sao2x_tests
     )
 endif()
+
+# --------------------------------------------------
+# Installation
+# --------------------------------------------------
 
 install(
     TARGETS sao2x sao2x_app
