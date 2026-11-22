@@ -3,6 +3,7 @@
 
 #include "sao/config.hpp"
 #include "sao/logger.hpp"
+#include "sao/platform.hpp"
 
 namespace sao {
 
@@ -32,11 +33,15 @@ public:
 
     static const char* version() noexcept;
 
+    Platform& platform() noexcept;
+
 private:
     EngineState state_ = EngineState::Created;
 
     EngineConfig config_;
     Logger logger_;
+
+    Platform platform_;
 };
 
 }
