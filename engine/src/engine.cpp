@@ -16,28 +16,24 @@ void Engine::initialize(const EngineConfig& config) {
     if (state_ != EngineState::Created) {
         throw EngineError(
             ErrorCode::AlreadyInitialized,
-            "Engine cannot be initialized in its current state."
+            "Engine has already been initialized or shut down."
         );
     }
 
     config.validate();
 
-    config_ = config;
+    try {
+        platform_.initialize();
 
-    logger_.initialize(
-        config_.log_level,
-        config_.enable_console_logging,
-        config_.enable_file_logging,
-        config_.log_file
-    );
+        logger_.initialize(config);
 
-    state_ = EngineState::Initialized;
-
-    logger_.info("Initializing Sao-2X...");
-    logger_.info("Engine version: " + std::string(version()));
-    logger_.info("Application: " + config_.application_name);
-    logger_.info("Target FPS: " + std::to_string(config_.target_fps));
-    logger_.info("Engine initialized successfully.");
+        config_ = config;
+        logger_.info("Sao-2X engine initialized.");
+        state_ = EngineState::Initialized;
+    } catch (...) {
+        platform_.shutdown();
+        throw;
+    }
 }
 
 void Engine::shutdown() {
@@ -45,10 +41,10 @@ void Engine::shutdown() {
         return;
     }
 
-    logger_.info("Shutting down Sao-2X...");
-    logger_.info("Engine shutdown completed.");
+    logger_.info("Shutting down Sao-2X.");
 
     logger_.shutdown();
+    platform_.shutdown();
 
     state_ = EngineState::Shutdown;
 }
@@ -71,6 +67,10 @@ const EngineConfig& Engine::config() const noexcept {
 
 const char* Engine::version() noexcept {
     return SAO2X_VERSION;
+}
+
+Platform& Engine::platform() noexcept {
+    return platform_;
 }
 
 }
