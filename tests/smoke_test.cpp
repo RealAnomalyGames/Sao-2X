@@ -1,10 +1,184 @@
 #include "sao/platform.hpp"
 #include "sao/platform_info.hpp"
 #include "sao/filesystem.hpp"
+#include "sao/memory/memory_manager.hpp"
+#include "sao/resources/resource.hpp"
+#include "sao/resources/resource_manager.hpp"
 
+#include <memory>
+#include <stdexcept>
 #include <cassert>
 #include <filesystem>
 #include <iostream>
+
+class TestResource : public sao::Resource {
+public:
+    explicit TestResource(int resource_value)
+        : value(resource_value) {
+    }
+
+    int value;
+};
+
+void test_resource_manager() {
+    int load_count = 0;
+
+    sao::ResourceManager<TestResource> manager(
+        [&load_count](const sao::AssetReference& asset) {
+            ++load_count;
+
+            if (asset.path() == "assets/test.asset") {
+                return std::make_shared<TestResource>(42);
+            }
+
+            return std::shared_ptr<TestResource>();
+        }
+    );
+
+    const sao::AssetReference asset("assets/test.asset");
+
+    const auto first = manager.load(asset);
+
+    if (!first.is_valid()) {
+        throw std::runtime_error(
+            "Resource manager returned an invalid handle."
+        );
+    }
+
+    if (!manager.is_loaded(first)) {
+        throw std::runtime_error(
+            "Resource was not marked as loaded."
+        );
+    }
+
+    auto resource = manager.get(first);
+
+    if (!resource || resource->value != 42) {
+        throw std::runtime_error(
+            "Resource retrieval failed."
+        );
+    }
+
+    const auto second = manager.load(asset);
+
+    if (first != second || load_count != 1) {
+        throw std::runtime_error(
+            "Resource caching failed."
+        );
+    }
+
+    if (manager.loaded_count() != 1) {
+        throw std::runtime_error(
+            "Resource count is incorrect."
+        );
+    }
+
+    if (!manager.unload(first)) {
+        throw std::runtime_error(
+            "Resource unloading failed."
+        );
+    }
+
+    if (manager.get(first)) {
+        throw std::runtime_error(
+            "An unloaded resource handle remained valid."
+        );
+    }
+
+    if (manager.loaded_count() != 0) {
+        throw std::runtime_error(
+            "Resource count was not updated after unloading."
+        );
+    }
+
+    const auto third = manager.load(asset);
+
+    if (!third.is_valid() || third == first) {
+        throw std::runtime_error(
+            "Resource handle generation tracking failed."
+        );
+    }
+
+    if (load_count != 2) {
+        throw std::runtime_error(
+            "Resource was not loaded again after unloading."
+        );
+    }
+
+    manager.unload_all();
+
+    if (manager.loaded_count() != 0 ||
+        manager.get(third)) {
+        throw std::runtime_error(
+            "ResourceManager::unload_all() failed."
+        );
+    }
+}
+
+void test_memory_manager() {
+    sao::MemoryManager memory;
+
+    void* first = memory.allocate(256, 16, "First test allocation");
+    void* second = memory.allocate(512, 32, "Second test allocation");
+
+    if (!memory.owns(first) || !memory.owns(second)) {
+        throw std::runtime_error(
+            "Memory manager ownership tracking failed."
+        );
+    }
+
+    sao::MemoryStats stats = memory.get_stats();
+
+    if (stats.current_bytes != 768 ||
+        stats.active_allocations != 2 ||
+        stats.allocation_count != 2) {
+        throw std::runtime_error(
+            "Memory allocation statistics are incorrect."
+        );
+    }
+
+    if (!memory.deallocate(first)) {
+        throw std::runtime_error(
+            "Memory deallocation failed."
+        );
+    }
+
+    stats = memory.get_stats();
+
+    if (stats.current_bytes != 512 ||
+        stats.active_allocations != 1) {
+        throw std::runtime_error(
+            "Memory statistics were not updated after deallocation."
+        );
+    }
+
+    if (memory.deallocate(first)) {
+        throw std::runtime_error(
+            "Memory manager accepted a duplicate deallocation."
+        );
+    }
+
+    if (!memory.deallocate(second)) {
+        throw std::runtime_error(
+            "Second memory deallocation failed."
+        );
+    }
+
+    stats = memory.get_stats();
+
+    if (stats.current_bytes != 0 ||
+        stats.active_allocations != 0) {
+        throw std::runtime_error(
+            "Memory manager did not release all test allocations."
+        );
+    }
+
+    if (stats.peak_bytes != 768) {
+        throw std::runtime_error(
+            "Memory peak allocation tracking failed."
+        );
+    }
+}
 
 void test_platform_detection() {
     const sao::PlatformInfo info = sao::PlatformDetector::detect();
@@ -115,6 +289,8 @@ int main() {
     test_platform_detection();
     test_platform_lifecycle();
     test_filesystem();
+    test_memory_manager();
+    test_resource_manager();
 
     return 0;
 }
