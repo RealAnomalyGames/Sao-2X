@@ -4,6 +4,7 @@
 #include "sao/config.hpp"
 #include "sao/logger.hpp"
 #include "sao/platform.hpp"
+#include "sao/memory/memory_manager.hpp"
 
 namespace sao {
 
@@ -35,6 +36,10 @@ public:
 
     Platform& platform() noexcept;
 
+    MemoryManager& memory() noexcept {
+        return memory_manager_;
+    }
+
 private:
     EngineState state_ = EngineState::Created;
 
@@ -42,6 +47,8 @@ private:
     Logger logger_;
 
     Platform platform_;
+
+    MemoryManager memory_manager_;
 };
 
 }
