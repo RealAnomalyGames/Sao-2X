@@ -39,6 +39,9 @@ set(SAO2X_SOURCES
 
     engine/src/memory/memory_manager.cpp
     engine/src/resources/resource.cpp
+
+    engine/src/window.cpp
+     engine/src/display.cpp
 )
 
 # --------------------------------------------------
