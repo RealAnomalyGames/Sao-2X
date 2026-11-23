@@ -45,8 +45,7 @@ jobs:
             -DBUILD_TESTING=ON
 
       - name: Build Linux
-        run: |
-          cmake --build build/linux --parallel
+        run: cmake --build build/linux --parallel 1
 
       - name: Test Linux
         run: |
