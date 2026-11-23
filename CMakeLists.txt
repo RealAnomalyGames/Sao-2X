@@ -36,6 +36,9 @@ set(SAO2X_SOURCES
     engine/src/platform.cpp
     engine/src/platform_info.cpp
     engine/src/filesystem.cpp
+
+    engine/src/memory/memory_manager.cpp
+    engine/src/resources/resource.cpp
 )
 
 # --------------------------------------------------
