@@ -1,6 +1,7 @@
 
 #include "sao/resources/resource.hpp"
 
+#include <string>
 #include <utility>
 
 namespace sao {
