@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #if defined(_WIN32)
 
@@ -63,11 +64,13 @@ DEVMODEW get_devmode(
     DEVMODEW mode{};
     mode.dmSize = sizeof(DEVMODEW);
 
-    EnumDisplaySettingsW(
+    if (!EnumDisplaySettingsW(
         device_name.empty() ? nullptr : device_name.c_str(),
         mode_number,
         &mode
-    );
+    )) {
+        mode.dmSize = 0;
+    }
 
     return mode;
 }
