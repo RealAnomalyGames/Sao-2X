@@ -213,16 +213,33 @@ void test_platform_detection() {
 void test_platform_lifecycle() {
     sao::Platform platform;
 
-    !platform.is_initialized();
+    if (platform.is_initialized()) {
+        throw std::runtime_error(
+            "Platform should not initially be initialized."
+        );
+    }
 
     platform.initialize();
 
-    platform.is_initialized();
-    platform.info().type != sao::PlatformType::Unknown;
+    if (!platform.is_initialized()) {
+        throw std::runtime_error(
+            "Platform initialization failed."
+        );
+    }
+
+    if (platform.info().type == sao::PlatformType::Unknown) {
+        throw std::runtime_error(
+            "Platform information is invalid."
+        );
+    }
 
     platform.shutdown();
 
-    !platform.is_initialized();
+    if (platform.is_initialized()) {
+        throw std::runtime_error(
+            "Platform shutdown failed."
+        );
+    }
 }
 
 
