@@ -45,6 +45,12 @@ public:
 
     float display_scale() const noexcept override;
 
+    void present_framebuffer(
+        const std::uint32_t* pixels,
+        int width,
+        int height
+    ) override;
+
 private:
     static std::wstring to_wide(const std::string& value);
 
