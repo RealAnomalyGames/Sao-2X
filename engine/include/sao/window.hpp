@@ -57,6 +57,12 @@ public:
     // Returns the display scale relative to 96 DPI.
     virtual float display_scale() const noexcept;
 
+    virtual void present_framebuffer(
+        const std::uint32_t* pixels,
+        int width,
+        int height
+    );
+
 protected:
     Window() = default;
 };
