@@ -4,6 +4,9 @@
 #include "sao/memory/memory_manager.hpp"
 #include "sao/resources/resource.hpp"
 #include "sao/resources/resource_manager.hpp"
+#include "sao/rendering/math3d.hpp"
+#include "sao/rendering/mesh.hpp"
+#include "sao/rendering/camera3d.hpp"
 
 #include <memory>
 #include <stdexcept>
@@ -243,6 +246,8 @@ void test_platform_lifecycle() {
 }
 
 
+
+
 #include <stdexcept>
 
 void test_filesystem() {
@@ -317,12 +322,64 @@ void test_filesystem() {
     }
 }
 
+void test_3d_rendering_foundation() {
+    using namespace sao;
+
+    const Vector3 a{1.0f, 2.0f, 3.0f};
+    const Vector3 b{2.0f, 3.0f, 4.0f};
+
+    const Vector3 sum = a + b;
+
+    if (sum.x != 3.0f || sum.y != 5.0f || sum.z != 7.0f) {
+        throw std::runtime_error("3D vector addition failed.");
+    }
+
+    const Vector3 cross = Vector3::cross(
+        {1.0f, 0.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f}
+    );
+
+    if (cross.x != 0.0f || cross.y != 0.0f || cross.z != 1.0f) {
+        throw std::runtime_error("3D vector cross product failed.");
+    }
+
+    const Matrix4 identity = Matrix4::identity();
+    const Vector3 transformed =
+        identity.transform_point({2.0f, 3.0f, 4.0f});
+
+    if (transformed.x != 2.0f ||
+        transformed.y != 3.0f ||
+        transformed.z != 4.0f) {
+        throw std::runtime_error("3D identity matrix failed.");
+    }
+
+    const Mesh cube = Mesh::create_cube();
+
+    if (cube.vertices.size() != 24 || cube.indices.size() != 36) {
+        throw std::runtime_error("Cube mesh generation failed.");
+    }
+
+    const Mesh plane = Mesh::create_plane();
+
+    if (plane.vertices.size() != 4 || plane.indices.size() != 6) {
+        throw std::runtime_error("Plane mesh generation failed.");
+    }
+
+    const Camera3D camera;
+    const Matrix4 view = camera.view_matrix();
+    const Matrix4 projection = camera.projection_matrix(16.0f / 9.0f);
+
+    (void)view;
+    (void)projection;
+}
+
 int main() {
     test_platform_detection();
     test_platform_lifecycle();
     test_filesystem();
     test_memory_manager();
     test_resource_manager();
+    test_3d_rendering_foundation();
 
     return 0;
 }
