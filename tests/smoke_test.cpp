@@ -181,11 +181,26 @@ void test_memory_manager() {
 }
 
 void test_platform_detection() {
-    const sao::PlatformInfo info = sao::PlatformDetector::detect();
+    const sao::PlatformInfo info =
+        sao::PlatformDetector::detect();
 
-    info.type != sao::PlatformType::Unknown;
-    !info.name.empty();
-    !info.architecture_name.empty();
+    if (info.type == sao::PlatformType::Unknown) {
+        throw std::runtime_error(
+            "Platform detection returned Unknown."
+        );
+    }
+
+    if (info.name.empty()) {
+        throw std::runtime_error(
+            "Platform name is empty."
+        );
+    }
+
+    if (info.architecture_name.empty()) {
+        throw std::runtime_error(
+            "Architecture name is empty."
+        );
+    }
 
     std::cout << "Detected platform: "
               << info.name << " "
