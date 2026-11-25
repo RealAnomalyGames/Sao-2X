@@ -30,3 +30,14 @@ float Window::display_scale() const noexcept {
 }
 
 } // namespace sao
+
+void Window::present_framebuffer(
+    const std::uint32_t*,
+    int,
+    int
+) {
+    throw EngineError(
+        ErrorCode::RuntimeFailure,
+        "Framebuffer presentation is not supported by this backend."
+    );
+}
