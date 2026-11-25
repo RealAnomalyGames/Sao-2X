@@ -45,6 +45,9 @@ set(SAO2X_SOURCES
     # Milestone 05: 2D Rendering
     engine/src/rendering/texture.cpp
     engine/src/rendering/renderer2d.cpp
+    
+    engine/src/rendering/model.cpp
+    engine/src/rendering/renderer3d.cpp
 )
 
 # --------------------------------------------------
