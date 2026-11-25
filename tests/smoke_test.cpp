@@ -24,6 +24,8 @@ public:
 };
 
 void test_resource_manager() {
+    std::cout << "[TEST] Resource Manager\n";
+    
     int load_count = 0;
 
     sao::ResourceManager<TestResource> manager(
@@ -119,6 +121,8 @@ void test_resource_manager() {
 }
 
 void test_memory_manager() {
+    std::cout << "[TEST] Memory Manager\n";
+    
     sao::MemoryManager memory;
 
     void* first = memory.allocate(256, 16, "First test allocation");
@@ -184,6 +188,8 @@ void test_memory_manager() {
 }
 
 void test_platform_detection() {
+    std::cout << "[TEST] Platform Detection\n";
+    
     const sao::PlatformInfo info =
         sao::PlatformDetector::detect();
 
@@ -214,6 +220,8 @@ void test_platform_detection() {
 }
 
 void test_platform_lifecycle() {
+    std::cout << "[TEST] Platform Lifecycle\n";
+    
     sao::Platform platform;
 
     if (platform.is_initialized()) {
@@ -251,6 +259,8 @@ void test_platform_lifecycle() {
 #include <stdexcept>
 
 void test_filesystem() {
+    std::cout << "[TEST] Filesystem\n";
+    
     const auto test_directory =
         sao::FileSystem::current_directory() / "sao2x_test";
 
@@ -323,6 +333,8 @@ void test_filesystem() {
 }
 
 void test_3d_rendering_foundation() {
+    std::cout << "[TEST] 3D Rendering Foundation\n";
+
     using namespace sao;
 
     const Vector3 a{1.0f, 2.0f, 3.0f};
@@ -374,12 +386,20 @@ void test_3d_rendering_foundation() {
 }
 
 int main() {
-    test_platform_detection();
-    test_platform_lifecycle();
-    test_filesystem();
-    test_memory_manager();
-    test_resource_manager();
-    test_3d_rendering_foundation();
+    try {
+        test_resource_manager();
+        test_memory_manager();
+        test_platform_detection();
+        test_platform_lifecycle();
+        test_filesystem();
 
-    return 0;
+        // Milestone 06
+        test_3d_rendering_foundation();
+
+        return 0;
+    }
+    catch (const std::exception& error) {
+        std::cerr << "TEST FAILED: " << error.what() << '\n';
+        return 1;
+    }
 }
