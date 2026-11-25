@@ -544,4 +544,59 @@ LRESULT CALLBACK Win32Window::window_procedure(
     return DefWindowProcW(hwnd, message, wparam, lparam);
 }
 
+void Win32Window::present_framebuffer(
+    const std::uint32_t* pixels,
+    int width,
+    int height
+) {
+    if (!handle_ || !pixels || width <= 0 || height <= 0) {
+        return;
+    }
+
+    HDC device_context = GetDC(handle_);
+
+    if (!device_context) {
+        return;
+    }
+
+    BITMAPINFO bitmap_info{};
+
+    bitmap_info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bitmap_info.bmiHeader.biWidth = width;
+    bitmap_info.bmiHeader.biHeight = -height;
+    bitmap_info.bmiHeader.biPlanes = 1;
+    bitmap_info.bmiHeader.biBitCount = 32;
+    bitmap_info.bmiHeader.biCompression = BI_RGB;
+
+    RECT client_rectangle{};
+
+    if (GetClientRect(handle_, &client_rectangle)) {
+        const int client_width =
+            client_rectangle.right - client_rectangle.left;
+
+        const int client_height =
+            client_rectangle.bottom - client_rectangle.top;
+
+        if (client_width > 0 && client_height > 0) {
+            StretchDIBits(
+                device_context,
+                0,
+                0,
+                client_width,
+                client_height,
+                0,
+                0,
+                width,
+                height,
+                pixels,
+                &bitmap_info,
+                DIB_RGB_COLORS,
+                SRCCOPY
+            );
+        }
+    }
+
+    ReleaseDC(handle_, device_context);
+}
+
 } // namespace sao
