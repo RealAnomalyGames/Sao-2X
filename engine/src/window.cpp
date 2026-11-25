@@ -29,8 +29,6 @@ float Window::display_scale() const noexcept {
     return 1.0f;
 }
 
-} // namespace sao
-
 void Window::present_framebuffer(
     const std::uint32_t*,
     int,
@@ -41,3 +39,6 @@ void Window::present_framebuffer(
         "Framebuffer presentation is not supported by this backend."
     );
 }
+
+} // namespace sao
+
