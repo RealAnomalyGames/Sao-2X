@@ -66,6 +66,8 @@ public:
     const std::string& renderer_name() const noexcept;
     const std::string& version_string() const noexcept;
 
+    void present();
+
 private:
     struct GLFunctions;
 
