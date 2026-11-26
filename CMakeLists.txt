@@ -91,6 +91,7 @@ if(WIN32)
     target_link_libraries(sao2x PRIVATE
         user32
         gdi32
+        opengl32
     )
 endif()
 
