@@ -32,7 +32,6 @@ set(SAO2X_SOURCES
     engine/src/logger.cpp
     engine/src/application.cpp
 
-    # Milestone 02: Platform Abstraction
     engine/src/platform.cpp
     engine/src/platform_info.cpp
     engine/src/filesystem.cpp
@@ -42,12 +41,15 @@ set(SAO2X_SOURCES
 
     engine/src/window.cpp
     engine/src/display.cpp
-    # Milestone 05: 2D Rendering
+    
     engine/src/rendering/texture.cpp
     engine/src/rendering/renderer2d.cpp
-    
     engine/src/rendering/model.cpp
     engine/src/rendering/renderer3d.cpp
+    
+    engine/src/rendering/graphics_device.cpp
+    engine/src/rendering/shader.cpp
+    engine/src/rendering/shader_program.cpp
 )
 
 # --------------------------------------------------
