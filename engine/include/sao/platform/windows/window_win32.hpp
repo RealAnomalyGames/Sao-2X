@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include "sao/window.hpp"
@@ -25,10 +26,13 @@ public:
     Win32Window(const Win32Window&) = delete;
     Win32Window& operator=(const Win32Window&) = delete;
 
+    HWND native_handle() const noexcept {
+        return handle_;
+    }
+
     void show() override;
     void hide() override;
     void close() override;
-
     void poll_events() override;
 
     void set_title(const std::string& title) override;
@@ -42,7 +46,6 @@ public:
 
     WindowSize size() const noexcept override;
     WindowPosition position() const noexcept override;
-
     float display_scale() const noexcept override;
 
     void present_framebuffer(
