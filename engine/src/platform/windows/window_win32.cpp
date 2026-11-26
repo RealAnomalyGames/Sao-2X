@@ -19,7 +19,7 @@ bool register_window_class(HINSTANCE instance) {
 
     WNDCLASSEXW window_class{};
     window_class.cbSize = sizeof(WNDCLASSEXW);
-    window_class.style = CS_HREDRAW | CS_VREDRAW;
+    window_class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     window_class.lpfnWndProc = Win32Window::window_procedure;
     window_class.hInstance = instance;
     window_class.hCursor = LoadCursorW(
