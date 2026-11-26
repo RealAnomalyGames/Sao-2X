@@ -59,6 +59,7 @@ set(SAO2X_SOURCES
 if(WIN32)
     list(APPEND SAO2X_SOURCES
         engine/src/platform/windows/window_win32.cpp
+        engine/src/rendering/opengl_backend.cpp
     )
 else()
     list(APPEND SAO2X_SOURCES
