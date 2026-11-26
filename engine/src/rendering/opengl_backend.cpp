@@ -843,4 +843,10 @@ void OpenGLBackend::apply_texture_sampler(
     gl_->BindSampler(texture_unit, sampler_object);
 }
 
+void OpenGLBackend::present() {
+    if (initialized_ && device_context_) {
+        SwapBuffers(device_context_);
+    }
+}
+
 } // namespace sao
