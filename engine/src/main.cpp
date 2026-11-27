@@ -82,12 +82,18 @@ public:
                     gpu_renderer_->last_error()
                 );
 
+            #ifdef _WIN32
                 gpu_renderer_.reset();
+            #endif
+                renderer_.reset();
             }
         }
 #endif
 
-        if (!gpu_renderer_) {
+#ifdef _WIN32
+        if (!gpu_renderer_)
+#endif
+        {
             renderer_ =
                 std::make_unique<sao::Renderer3D>(*window_);
 
@@ -164,8 +170,6 @@ private:
 
 #ifdef _WIN32
     std::unique_ptr<sao::OpenGLRenderer3D> gpu_renderer_;
-#endif
-    std::nullptr_t gpu_renderer_ = nullptr;
 #endif
 
     sao::Camera3D camera_;
