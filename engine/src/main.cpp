@@ -1,6 +1,7 @@
+
 #include <iostream>
 #include <memory>
-#include <cstddef>
+#include <string>
 
 #include "sao/application.hpp"
 #include "sao/rendering/renderer3d.hpp"
@@ -22,8 +23,19 @@ public:
             "Initializing Sao-2X 3D rendering demonstration."
         );
 
+        // Create the application window.
         window_ = engine().platform().create_window();
 
+        if (!window_) {
+            engine().logger().error(
+                "Failed to create the application window."
+            );
+
+            requestStop();
+            return;
+        }
+
+        // Configure the camera.
         camera_.position = {0.0f, 0.0f, 5.0f};
         camera_.target = {0.0f, 0.0f, 0.0f};
         camera_.up = {0.0f, 1.0f, 0.0f};
@@ -31,26 +43,33 @@ public:
         camera_.near_plane = 0.1f;
         camera_.far_plane = 100.0f;
 
+        // Create the cube mesh.
         cube_ = sao::Mesh::create_cube();
 
+        // Configure the cube transform.
         cube_transform_.position = {0.0f, 0.0f, 0.0f};
         cube_transform_.rotation = {0.0f, 0.0f, 0.0f};
         cube_transform_.scale = {1.5f, 1.5f, 1.5f};
 
+        // Configure the cube material.
         material_.diffuse = {0.2f, 0.55f, 0.95f};
         material_.ambient = {0.15f, 0.15f, 0.15f};
         material_.specular = {1.0f, 1.0f, 1.0f};
         material_.shininess = 32.0f;
         material_.opacity = 1.0f;
 
-        sao::Light3D light =
+        // Configure directional lighting.
+        const sao::Light3D light =
             sao::Light3D::directional(
                 {-0.5f, -1.0f, -0.5f},
                 {1.0f, 1.0f, 1.0f},
                 1.0f
             );
 
+        bool gpu_initialized = false;
+
 #ifdef _WIN32
+        // Attempt to initialize the OpenGL renderer on Windows.
         auto* native_window =
             dynamic_cast<sao::Win32Window*>(window_.get());
 
@@ -62,6 +81,8 @@ public:
 
             if (gpu_renderer_->initialize()) {
                 gpu_renderer_->add_light(light);
+
+                gpu_initialized = true;
 
                 engine().logger().info(
                     "OpenGL renderer initialized successfully."
@@ -82,18 +103,19 @@ public:
                     gpu_renderer_->last_error()
                 );
 
-            #ifdef _WIN32
                 gpu_renderer_.reset();
-            #endif
-                renderer_.reset();
             }
+        } else {
+            engine().logger().warning(
+                "The native window is not a Win32 window. "
+                "OpenGL rendering is unavailable."
+            );
         }
 #endif
 
-#ifdef _WIN32
-        if (!gpu_renderer_)
-#endif
-        {
+        // Initialize the software renderer when GPU rendering
+        // is unavailable or unsupported.
+        if (!gpu_initialized) {
             renderer_ =
                 std::make_unique<sao::Renderer3D>(*window_);
 
@@ -110,6 +132,11 @@ public:
     }
 
     void onUpdate(float delta_time) override {
+        if (!window_) {
+            requestStop();
+            return;
+        }
+
         window_->poll_events();
 
         if (!window_->is_open()) {
@@ -117,44 +144,59 @@ public:
             return;
         }
 
+        // Rotate the cube.
         cube_transform_.rotation.x += delta_time * 0.5f;
         cube_transform_.rotation.y += delta_time * 0.8f;
         cube_transform_.rotation.z += delta_time * 0.3f;
 
-        #ifdef _WIN32
-            if (gpu_renderer_) {
-                gpu_renderer_->begin_frame(
-                    camera_,
-                    {0.08f, 0.09f, 0.14f}
-                );
+        const sao::Color3 clear_color{
+            0.08f,
+            0.09f,
+            0.14f
+        };
 
-                gpu_renderer_->draw_mesh(
-                    cube_,
-                    cube_transform_,
-                    material_
-                );
+#ifdef _WIN32
+        // Prefer the OpenGL renderer when initialized.
+        if (gpu_renderer_) {
+            gpu_renderer_->begin_frame(
+                camera_,
+                clear_color
+            );
 
-                gpu_renderer_->end_frame();
-            } else
-        #endif
-            if (renderer_) {
-                renderer_->begin_frame(
-                    camera_,
-                    {0.08f, 0.09f, 0.14f}
-                );
+            gpu_renderer_->draw_mesh(
+                cube_,
+                cube_transform_,
+                material_
+            );
 
-                renderer_->draw_mesh(
-                    cube_,
-                    cube_transform_,
-                    material_
-                );
+            gpu_renderer_->end_frame();
+            return;
+        }
+#endif
 
-                renderer_->end_frame();
-            }
+        // Otherwise use the software renderer.
+        if (renderer_) {
+            renderer_->begin_frame(
+                camera_,
+                clear_color
+            );
+
+            renderer_->draw_mesh(
+                cube_,
+                cube_transform_,
+                material_
+            );
+
+            renderer_->end_frame();
+        }
     }
 
     void onShutdown() override {
+        // Destroy the renderer before its associated window.
+#ifdef _WIN32
         gpu_renderer_.reset();
+#endif
+
         renderer_.reset();
         window_.reset();
 
@@ -166,9 +208,11 @@ public:
 private:
     std::unique_ptr<sao::Window> window_;
 
+    // Software renderer, used as the cross-platform fallback.
     std::unique_ptr<sao::Renderer3D> renderer_;
 
 #ifdef _WIN32
+    // Windows-only OpenGL renderer.
     std::unique_ptr<sao::OpenGLRenderer3D> gpu_renderer_;
 #endif
 
