@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <cstddef>
 
 #include "sao/application.hpp"
 #include "sao/rendering/renderer3d.hpp"
@@ -161,7 +162,7 @@ private:
 #ifdef _WIN32
     std::unique_ptr<sao::OpenGLRenderer3D> gpu_renderer_;
 #else
-    bool gpu_renderer_ = false;
+    std::nullptr_t gpu_renderer_ = nullptr;
 #endif
 
     sao::Camera3D camera_;
