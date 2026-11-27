@@ -160,7 +160,7 @@ private:
     std::unique_ptr<sao::Renderer3D> renderer_;
 
 #ifdef _WIN32
-    std::unique_ptr<sao::OpenGLRenderer3D> gpu_renderer_;
+    std::unique_ptr<sao::Renderer3D> gpu_renderer_;
 #else
     std::nullptr_t gpu_renderer_ = nullptr;
 #endif
