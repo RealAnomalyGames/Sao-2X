@@ -115,33 +115,36 @@ public:
         cube_transform_.rotation.y += delta_time * 0.8f;
         cube_transform_.rotation.z += delta_time * 0.3f;
 
-        if (gpu_renderer_) {
-            gpu_renderer_->begin_frame(
-                camera_,
-                {0.08f, 0.09f, 0.14f}
-            );
+        #ifdef _WIN32
+            if (gpu_renderer_) {
+                gpu_renderer_->begin_frame(
+                    camera_,
+                    {0.08f, 0.09f, 0.14f}
+                );
 
-            gpu_renderer_->draw_mesh(
-                cube_,
-                cube_transform_,
-                material_
-            );
+                gpu_renderer_->draw_mesh(
+                    cube_,
+                    cube_transform_,
+                    material_
+                );
 
-            gpu_renderer_->end_frame();
-        } else if (renderer_) {
-            renderer_->begin_frame(
-                camera_,
-                {0.08f, 0.09f, 0.14f}
-            );
+                gpu_renderer_->end_frame();
+            } else
+        #endif
+            if (renderer_) {
+                renderer_->begin_frame(
+                    camera_,
+                    {0.08f, 0.09f, 0.14f}
+                );
 
-            renderer_->draw_mesh(
-                cube_,
-                cube_transform_,
-                material_
-            );
+                renderer_->draw_mesh(
+                    cube_,
+                    cube_transform_,
+                    material_
+                );
 
-            renderer_->end_frame();
-        }
+                renderer_->end_frame();
+            }
     }
 
     void onShutdown() override {
@@ -160,8 +163,8 @@ private:
     std::unique_ptr<sao::Renderer3D> renderer_;
 
 #ifdef _WIN32
-    std::unique_ptr<sao::Renderer3D> gpu_renderer_ = nullptr;
-#else
+    std::unique_ptr<sao::OpenGLRenderer3D> gpu_renderer_;
+#endif
     std::nullptr_t gpu_renderer_ = nullptr;
 #endif
 
