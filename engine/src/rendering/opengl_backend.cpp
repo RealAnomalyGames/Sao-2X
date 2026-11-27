@@ -1,11 +1,184 @@
+#ifdef _WIN32
 
 #include "sao/rendering/opengl_backend.hpp"
 
+#include <windows.h>
+#include <GL/gl.h>
+
 #include <algorithm>
-#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
-#include <sstream>
-#include <vector>
+#include <limits>
+#include <string>
+
+#ifndef GL_ARRAY_BUFFER
+#define GL_ARRAY_BUFFER 0x8892
+#endif
+
+#ifndef GL_ELEMENT_ARRAY_BUFFER
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+#endif
+
+#ifndef GL_STATIC_DRAW
+#define GL_STATIC_DRAW 0x88E4
+#endif
+
+#ifndef GL_DYNAMIC_DRAW
+#define GL_DYNAMIC_DRAW 0x88E8
+#endif
+
+#ifndef GL_VERTEX_SHADER
+#define GL_VERTEX_SHADER 0x8B31
+#endif
+
+#ifndef GL_FRAGMENT_SHADER
+#define GL_FRAGMENT_SHADER 0x8B30
+#endif
+
+#ifndef GL_GEOMETRY_SHADER
+#define GL_GEOMETRY_SHADER 0x8DD9
+#endif
+
+#ifndef GL_COMPILE_STATUS
+#define GL_COMPILE_STATUS 0x8B81
+#endif
+
+#ifndef GL_LINK_STATUS
+#define GL_LINK_STATUS 0x8B82
+#endif
+
+#ifndef GL_INFO_LOG_LENGTH
+#define GL_INFO_LOG_LENGTH 0x8B84
+#endif
+
+#ifndef GL_DEPTH_TEST
+#define GL_DEPTH_TEST 0x0B71
+#endif
+
+#ifndef GL_CULL_FACE
+#define GL_CULL_FACE 0x0B44
+#endif
+
+#ifndef GL_BLEND
+#define GL_BLEND 0x0BE2
+#endif
+
+#ifndef GL_SRC_ALPHA
+#define GL_SRC_ALPHA 0x0302
+#endif
+
+#ifndef GL_ONE_MINUS_SRC_ALPHA
+#define GL_ONE_MINUS_SRC_ALPHA 0x0303
+#endif
+
+#ifndef GL_FUNC_ADD
+#define GL_FUNC_ADD 0x8006
+#endif
+
+#ifndef GL_FUNC_SUBTRACT
+#define GL_FUNC_SUBTRACT 0x800A
+#endif
+
+#ifndef GL_FUNC_REVERSE_SUBTRACT
+#define GL_FUNC_REVERSE_SUBTRACT 0x800B
+#endif
+
+#ifndef GL_MIN
+#define GL_MIN 0x8007
+#endif
+
+#ifndef GL_MAX
+#define GL_MAX 0x8008
+#endif
+
+#ifndef GL_FRONT_AND_BACK
+#define GL_FRONT_AND_BACK 0x0408
+#endif
+
+#ifndef GL_LINE
+#define GL_LINE 0x1B01
+#endif
+
+#ifndef GL_FILL
+#define GL_FILL 0x1B02
+#endif
+
+#ifndef GL_VERTEX_ARRAY_BINDING
+#define GL_VERTEX_ARRAY_BINDING 0x85B5
+#endif
+
+#ifndef GL_TEXTURE0
+#define GL_TEXTURE0 0x84C0
+#endif
+
+#ifndef GL_TEXTURE1
+#define GL_TEXTURE1 0x84C1
+#endif
+
+#ifndef GL_TEXTURE_2D
+#define GL_TEXTURE_2D 0x0DE1
+#endif
+
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
+
+#ifndef GL_CLAMP_TO_BORDER
+#define GL_CLAMP_TO_BORDER 0x812D
+#endif
+
+#ifndef GL_MIRRORED_REPEAT
+#define GL_MIRRORED_REPEAT 0x8370
+#endif
+
+#ifndef GL_TEXTURE_MIN_FILTER
+#define GL_TEXTURE_MIN_FILTER 0x2801
+#endif
+
+#ifndef GL_TEXTURE_MAG_FILTER
+#define GL_TEXTURE_MAG_FILTER 0x2800
+#endif
+
+#ifndef GL_TEXTURE_WRAP_S
+#define GL_TEXTURE_WRAP_S 0x2802
+#endif
+
+#ifndef GL_TEXTURE_WRAP_T
+#define GL_TEXTURE_WRAP_T 0x2803
+#endif
+
+#ifndef GL_TEXTURE_MIN_LOD
+#define GL_TEXTURE_MIN_LOD 0x813A
+#endif
+
+#ifndef GL_TEXTURE_MAX_LOD
+#define GL_TEXTURE_MAX_LOD 0x813B
+#endif
+
+#ifndef GL_UNSIGNED_INT
+#define GL_UNSIGNED_INT 0x1405
+#endif
+
+#ifndef GL_DEPTH_COMPONENT
+#define GL_DEPTH_COMPONENT 0x1902
+#endif
+
+#ifndef WGL_CONTEXT_MAJOR_VERSION_ARB
+#define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#endif
+
+#ifndef WGL_CONTEXT_MINOR_VERSION_ARB
+#define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
+#endif
+
+#ifndef WGL_CONTEXT_PROFILE_MASK_ARB
+#define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
+#endif
+
+#ifndef WGL_CONTEXT_CORE_PROFILE_BIT_ARB
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB 0x00000001
+#endif
 
 namespace sao {
 
@@ -16,504 +189,665 @@ using GLuint = unsigned int;
 using GLint = int;
 using GLsizei = int;
 using GLboolean = unsigned char;
-using GLfloat = float;
 using GLchar = char;
-using GLbitfield = unsigned int;
+using GLfloat = float;
 using GLsizeiptr = std::ptrdiff_t;
 
-constexpr GLenum GL_VERSION_VALUE = 0x1F02;
-constexpr GLenum GL_RENDERER_VALUE = 0x1F01;
+using WglCreateContextAttribsARB =
+    HGLRC(WINAPI*)(HDC, HGLRC, const int*);
 
-constexpr GLenum GL_VERTEX_SHADER_VALUE = 0x8B31;
-constexpr GLenum GL_FRAGMENT_SHADER_VALUE = 0x8B30;
-constexpr GLenum GL_GEOMETRY_SHADER_VALUE = 0x8DD9;
+using PFNGLCREATESHADERPROC =
+    GLuint(APIENTRY*)(GLenum);
 
-constexpr GLenum GL_COMPILE_STATUS_VALUE = 0x8B81;
-constexpr GLenum GL_LINK_STATUS_VALUE = 0x8B82;
-constexpr GLenum GL_INFO_LOG_LENGTH_VALUE = 0x8B84;
+using PFNGLSHADERSOURCEPROC =
+    void(APIENTRY*)(GLuint, GLsizei, const GLchar* const*, const GLint*);
 
-constexpr GLenum GL_DEPTH_TEST_VALUE = 0x0B71;
-constexpr GLenum GL_BLEND_VALUE = 0x0BE2;
-constexpr GLenum GL_CULL_FACE_VALUE = 0x0B44;
+using PFNGLCOMPILESHADERPROC =
+    void(APIENTRY*)(GLuint);
 
-constexpr GLenum GL_FRONT_VALUE = 0x0404;
-constexpr GLenum GL_BACK_VALUE = 0x0405;
-constexpr GLenum GL_FRONT_AND_BACK_VALUE = 0x0408;
+using PFNGLGETSHADERIVPROC =
+    void(APIENTRY*)(GLuint, GLenum, GLint*);
 
-constexpr GLenum GL_CW_VALUE = 0x0900;
-constexpr GLenum GL_CCW_VALUE = 0x0901;
+using PFNGLGETSHADERINFOLOGPROC =
+    void(APIENTRY*)(GLuint, GLsizei, GLsizei*, GLchar*);
 
-constexpr GLenum GL_NEVER_VALUE = 0x0200;
-constexpr GLenum GL_LESS_VALUE = 0x0201;
-constexpr GLenum GL_EQUAL_VALUE = 0x0202;
-constexpr GLenum GL_LEQUAL_VALUE = 0x0203;
-constexpr GLenum GL_GREATER_VALUE = 0x0204;
-constexpr GLenum GL_NOTEQUAL_VALUE = 0x0205;
-constexpr GLenum GL_GEQUAL_VALUE = 0x0206;
-constexpr GLenum GL_ALWAYS_VALUE = 0x0207;
+using PFNGLDELETESHADERPROC =
+    void(APIENTRY*)(GLuint);
 
-constexpr GLenum GL_ZERO_VALUE = 0;
-constexpr GLenum GL_ONE_VALUE = 1;
-constexpr GLenum GL_SRC_COLOR_VALUE = 0x0300;
-constexpr GLenum GL_ONE_MINUS_SRC_COLOR_VALUE = 0x0301;
-constexpr GLenum GL_SRC_ALPHA_VALUE = 0x0302;
-constexpr GLenum GL_ONE_MINUS_SRC_ALPHA_VALUE = 0x0303;
-constexpr GLenum GL_DST_ALPHA_VALUE = 0x0304;
-constexpr GLenum GL_ONE_MINUS_DST_ALPHA_VALUE = 0x0305;
-constexpr GLenum GL_DST_COLOR_VALUE = 0x0306;
-constexpr GLenum GL_ONE_MINUS_DST_COLOR_VALUE = 0x0307;
+using PFNGLCREATEPROGRAMPROC =
+    GLuint(APIENTRY*)();
 
-constexpr GLenum GL_FUNC_ADD_VALUE = 0x8006;
-constexpr GLenum GL_FUNC_SUBTRACT_VALUE = 0x800A;
-constexpr GLenum GL_FUNC_REVERSE_SUBTRACT_VALUE = 0x800B;
-constexpr GLenum GL_MIN_VALUE = 0x8007;
-constexpr GLenum GL_MAX_VALUE = 0x8008;
+using PFNGLATTACHSHADERPROC =
+    void(APIENTRY*)(GLuint, GLuint);
 
-constexpr GLenum GL_POINT_VALUE = 0x1B00;
-constexpr GLenum GL_LINE_VALUE = 0x1B01;
-constexpr GLenum GL_FILL_VALUE = 0x1B02;
+using PFNGLLINKPROGRAMPROC =
+    void(APIENTRY*)(GLuint);
 
-constexpr GLenum GL_TEXTURE0_VALUE = 0x84C0;
+using PFNGLGETPROGRAMIVPROC =
+    void(APIENTRY*)(GLuint, GLenum, GLint*);
 
-constexpr GLenum GL_TEXTURE_MIN_FILTER_VALUE = 0x2801;
-constexpr GLenum GL_TEXTURE_MAG_FILTER_VALUE = 0x2800;
-constexpr GLenum GL_TEXTURE_WRAP_S_VALUE = 0x2802;
-constexpr GLenum GL_TEXTURE_WRAP_T_VALUE = 0x2803;
+using PFNGLGETPROGRAMINFOLOGPROC =
+    void(APIENTRY*)(GLuint, GLsizei, GLsizei*, GLchar*);
 
-constexpr GLenum GL_NEAREST_VALUE = 0x2600;
-constexpr GLenum GL_LINEAR_VALUE = 0x2601;
-constexpr GLenum GL_NEAREST_MIPMAP_NEAREST_VALUE = 0x2700;
-constexpr GLenum GL_LINEAR_MIPMAP_NEAREST_VALUE = 0x2701;
-constexpr GLenum GL_NEAREST_MIPMAP_LINEAR_VALUE = 0x2702;
-constexpr GLenum GL_LINEAR_MIPMAP_LINEAR_VALUE = 0x2703;
+using PFNGLDELETEPROGRAMPROC =
+    void(APIENTRY*)(GLuint);
 
-constexpr GLenum GL_REPEAT_VALUE = 0x2901;
-constexpr GLenum GL_MIRRORED_REPEAT_VALUE = 0x8370;
-constexpr GLenum GL_CLAMP_TO_EDGE_VALUE = 0x812F;
-constexpr GLenum GL_CLAMP_TO_BORDER_VALUE = 0x812D;
+using PFNGLUSEPROGRAMPROC =
+    void(APIENTRY*)(GLuint);
 
-constexpr GLenum GL_TEXTURE_MAX_ANISOTROPY_EXT_VALUE = 0x84FE;
+using PFNGLGENBUFFERSPROC =
+    void(APIENTRY*)(GLsizei, GLuint*);
 
-constexpr int WGL_CONTEXT_MAJOR_VERSION_VALUE = 0x2091;
-constexpr int WGL_CONTEXT_MINOR_VERSION_VALUE = 0x2092;
-constexpr int WGL_CONTEXT_PROFILE_MASK_VALUE = 0x9126;
-constexpr int WGL_CONTEXT_CORE_PROFILE_BIT_VALUE = 0x00000001;
+using PFNGLDELETEBUFFERSPROC =
+    void(APIENTRY*)(GLsizei, const GLuint*);
 
-using CreateContextAttribsARB = HGLRC(WINAPI*)(
-    HDC,
-    HGLRC,
-    const int*
-);
+using PFNGLBINDBUFFERPROC =
+    void(APIENTRY*)(GLenum, GLuint);
 
-bool valid_wgl_proc(PROC proc) {
-    return proc &&
-           proc != reinterpret_cast<PROC>(1) &&
-           proc != reinterpret_cast<PROC>(2) &&
-           proc != reinterpret_cast<PROC>(3) &&
-           proc != reinterpret_cast<PROC>(-1);
-}
+using PFNGLBUFFERDATAPROC =
+    void(APIENTRY*)(GLenum, GLsizeiptr, const void*, GLenum);
 
-PROC load_gl_proc(const char* name) {
-    PROC proc = wglGetProcAddress(name);
+using PFNGLGENVERTEXARRAYSPROC =
+    void(APIENTRY*)(GLsizei, GLuint*);
 
-    if (valid_wgl_proc(proc)) {
-        return proc;
+using PFNGLDELETEVERTEXARRAYSPROC =
+    void(APIENTRY*)(GLsizei, const GLuint*);
+
+using PFNGLBINDVERTEXARRAYPROC =
+    void(APIENTRY*)(GLuint);
+
+using PFNGLENABLEVERTEXATTRIBARRAYPROC =
+    void(APIENTRY*)(GLuint);
+
+using PFNGLVERTEXATTRIBPOINTERPROC =
+    void(APIENTRY*)(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*);
+
+using PFNGLDRAWELEMENTSPROC =
+    void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*);
+
+using PFNGLGENTEXTURESPROC =
+    void(APIENTRY*)(GLsizei, GLuint*);
+
+using PFNGLDELETETEXTURESPROC =
+    void(APIENTRY*)(GLsizei, const GLuint*);
+
+using PFNGLBINDTEXTUREPROC =
+    void(APIENTRY*)(GLenum, GLuint);
+
+using PFNGLTEXIMAGE2DPROC =
+    void(APIENTRY*)(GLenum, GLint, GLint, GLsizei, GLsizei,
+                    GLint, GLenum, GLenum, const void*);
+
+using PFNGLTEXPARAMETERIPROC =
+    void(APIENTRY*)(GLenum, GLenum, GLint);
+
+using PFNGLACTIVETEXTUREPROC =
+    void(APIENTRY*)(GLenum);
+
+using PFNGLPIXELSTOREIPROC =
+    void(APIENTRY*)(GLenum, GLint);
+
+using PFNGLGENSAMPLERSPROC =
+    void(APIENTRY*)(GLsizei, GLuint*);
+
+using PFNGLDELETESAMPLERSPROC =
+    void(APIENTRY*)(GLsizei, const GLuint*);
+
+using PFNGLSAMPLERPARAMETERIPROC =
+    void(APIENTRY*)(GLuint, GLenum, GLint);
+
+using PFNGLBINDSAMPLERPROC =
+    void(APIENTRY*)(GLuint, GLuint);
+
+using PFNGLBLENDFUNCSEPARATEPROC =
+    void(APIENTRY*)(GLenum, GLenum, GLenum, GLenum);
+
+using PFNGLBLENDEQUATIONSEPARATEPROC =
+    void(APIENTRY*)(GLenum, GLenum);
+
+using PFNGLDEPTHFUNCPROC =
+    void(APIENTRY*)(GLenum);
+
+using PFNGLDEPTHMASKPROC =
+    void(APIENTRY*)(GLboolean);
+
+using PFNGLCULLFACEPROC =
+    void(APIENTRY*)(GLenum);
+
+using PFNGLFRONTFACEPROC =
+    void(APIENTRY*)(GLenum);
+
+using PFNGLPOLYGONMODEPROC =
+    void(APIENTRY*)(GLenum, GLenum);
+
+using PFNGLGETUNIFORMLOCATIONPROC =
+    GLint(APIENTRY*)(GLuint, const GLchar*);
+
+using PFNGLUNIFORM1IPROC =
+    void(APIENTRY*)(GLint, GLint);
+
+using PFNGLUNIFORM1FPROC =
+    void(APIENTRY*)(GLint, GLfloat);
+
+using PFNGLUNIFORM3FPROC =
+    void(APIENTRY*)(GLint, GLfloat, GLfloat, GLfloat);
+
+using PFNGLUNIFORMMATRIX4FVPROC =
+    void(APIENTRY*)(GLint, GLsizei, GLboolean, const GLfloat*);
+
+using PFNGLVIEWPORTPROC =
+    void(APIENTRY*)(GLint, GLint, GLsizei, GLsizei);
+
+using PFNGLCLEARCOLORPROC =
+    void(APIENTRY*)(GLfloat, GLfloat, GLfloat, GLfloat);
+
+using PFNGLCLEARPROC =
+    void(APIENTRY*)(unsigned int);
+
+GLenum shader_stage_to_gl(ShaderStage stage) {
+    switch (stage) {
+        case ShaderStage::Vertex:
+            return GL_VERTEX_SHADER;
+
+        case ShaderStage::Fragment:
+            return GL_FRAGMENT_SHADER;
+
+        case ShaderStage::Geometry:
+            return GL_GEOMETRY_SHADER;
+
+        case ShaderStage::Compute:
+            return 0;
     }
 
-    HMODULE module = GetModuleHandleW(L"opengl32.dll");
-
-    if (!module) {
-        return nullptr;
-    }
-
-    return reinterpret_cast<PROC>(
-        GetProcAddress(module, name)
-    );
+    return 0;
 }
 
-GLenum to_gl_depth_function(DepthFunction function) {
-    switch (function) {
-        case DepthFunction::Never: return GL_NEVER_VALUE;
-        case DepthFunction::Less: return GL_LESS_VALUE;
-        case DepthFunction::LessEqual: return GL_LEQUAL_VALUE;
-        case DepthFunction::Equal: return GL_EQUAL_VALUE;
-        case DepthFunction::GreaterEqual: return GL_GEQUAL_VALUE;
-        case DepthFunction::Greater: return GL_GREATER_VALUE;
-        case DepthFunction::NotEqual: return GL_NOTEQUAL_VALUE;
-        case DepthFunction::Always: return GL_ALWAYS_VALUE;
-    }
-
-    return GL_LESS_VALUE;
-}
-
-GLenum to_gl_blend_factor(BlendFactor factor) {
+GLenum blend_factor_to_gl(BlendFactor factor) {
     switch (factor) {
-        case BlendFactor::Zero: return GL_ZERO_VALUE;
-        case BlendFactor::One: return GL_ONE_VALUE;
-        case BlendFactor::SourceColor: return GL_SRC_COLOR_VALUE;
+        case BlendFactor::Zero: return GL_ZERO;
+        case BlendFactor::One: return GL_ONE;
+        case BlendFactor::SourceColor: return GL_SRC_COLOR;
         case BlendFactor::OneMinusSourceColor:
-            return GL_ONE_MINUS_SRC_COLOR_VALUE;
-        case BlendFactor::DestinationColor:
-            return GL_DST_COLOR_VALUE;
+            return GL_ONE_MINUS_SRC_COLOR;
+        case BlendFactor::DestinationColor: return GL_DST_COLOR;
         case BlendFactor::OneMinusDestinationColor:
-            return GL_ONE_MINUS_DST_COLOR_VALUE;
-        case BlendFactor::SourceAlpha:
-            return GL_SRC_ALPHA_VALUE;
+            return GL_ONE_MINUS_DST_COLOR;
+        case BlendFactor::SourceAlpha: return GL_SRC_ALPHA;
         case BlendFactor::OneMinusSourceAlpha:
-            return GL_ONE_MINUS_SRC_ALPHA_VALUE;
-        case BlendFactor::DestinationAlpha:
-            return GL_DST_ALPHA_VALUE;
+            return GL_ONE_MINUS_SRC_ALPHA;
+        case BlendFactor::DestinationAlpha: return GL_DST_ALPHA;
         case BlendFactor::OneMinusDestinationAlpha:
-            return GL_ONE_MINUS_DST_ALPHA_VALUE;
+            return GL_ONE_MINUS_DST_ALPHA;
     }
 
-    return GL_ONE_VALUE;
+    return GL_ONE;
 }
 
-GLenum to_gl_blend_operation(BlendOperation operation) {
+GLenum blend_operation_to_gl(BlendOperation operation) {
     switch (operation) {
-        case BlendOperation::Add: return GL_FUNC_ADD_VALUE;
-        case BlendOperation::Subtract:
-            return GL_FUNC_SUBTRACT_VALUE;
+        case BlendOperation::Add: return GL_FUNC_ADD;
+        case BlendOperation::Subtract: return GL_FUNC_SUBTRACT;
         case BlendOperation::ReverseSubtract:
-            return GL_FUNC_REVERSE_SUBTRACT_VALUE;
-        case BlendOperation::Minimum: return GL_MIN_VALUE;
-        case BlendOperation::Maximum: return GL_MAX_VALUE;
+            return GL_FUNC_REVERSE_SUBTRACT;
+        case BlendOperation::Minimum: return GL_MIN;
+        case BlendOperation::Maximum: return GL_MAX;
     }
 
-    return GL_FUNC_ADD_VALUE;
+    return GL_FUNC_ADD;
 }
 
-GLenum to_gl_texture_filter(TextureFilter filter) {
+GLenum depth_function_to_gl(DepthFunction function) {
+    switch (function) {
+        case DepthFunction::Never: return GL_NEVER;
+        case DepthFunction::Less: return GL_LESS;
+        case DepthFunction::LessEqual: return GL_LEQUAL;
+        case DepthFunction::Equal: return GL_EQUAL;
+        case DepthFunction::GreaterEqual: return GL_GEQUAL;
+        case DepthFunction::Greater: return GL_GREATER;
+        case DepthFunction::NotEqual: return GL_NOTEQUAL;
+        case DepthFunction::Always: return GL_ALWAYS;
+    }
+
+    return GL_LESS;
+}
+
+GLenum texture_filter_to_gl(TextureFilter filter) {
     switch (filter) {
-        case TextureFilter::Nearest: return GL_NEAREST_VALUE;
-        case TextureFilter::Linear: return GL_LINEAR_VALUE;
+        case TextureFilter::Nearest:
+            return GL_NEAREST;
+
+        case TextureFilter::Linear:
+            return GL_LINEAR;
+
         case TextureFilter::NearestMipmapNearest:
-            return GL_NEAREST_MIPMAP_NEAREST_VALUE;
+            return GL_NEAREST_MIPMAP_NEAREST;
+
         case TextureFilter::LinearMipmapNearest:
-            return GL_LINEAR_MIPMAP_NEAREST_VALUE;
+            return GL_LINEAR_MIPMAP_NEAREST;
+
         case TextureFilter::NearestMipmapLinear:
-            return GL_NEAREST_MIPMAP_LINEAR_VALUE;
+            return GL_NEAREST_MIPMAP_LINEAR;
+
         case TextureFilter::LinearMipmapLinear:
-            return GL_LINEAR_MIPMAP_LINEAR_VALUE;
+            return GL_LINEAR_MIPMAP_LINEAR;
     }
 
-    return GL_LINEAR_VALUE;
+    return GL_LINEAR;
 }
 
-GLenum to_gl_texture_wrap(TextureWrap wrap) {
+GLenum texture_wrap_to_gl(TextureWrap wrap) {
     switch (wrap) {
-        case TextureWrap::Repeat: return GL_REPEAT_VALUE;
+        case TextureWrap::Repeat:
+            return GL_REPEAT;
+
         case TextureWrap::MirroredRepeat:
-            return GL_MIRRORED_REPEAT_VALUE;
+            return GL_MIRRORED_REPEAT;
+
         case TextureWrap::ClampToEdge:
-            return GL_CLAMP_TO_EDGE_VALUE;
+            return GL_CLAMP_TO_EDGE;
+
         case TextureWrap::ClampToBorder:
-            return GL_CLAMP_TO_BORDER_VALUE;
+            return GL_CLAMP_TO_BORDER;
     }
 
-    return GL_REPEAT_VALUE;
+    return GL_REPEAT;
 }
 
 } // namespace
 
-struct OpenGLBackend::GLFunctions {
-#define SAO_GL_FUNCTION(return_type, name, arguments) \
-    using name##Type = return_type(APIENTRY*) arguments; \
-    name##Type name = nullptr
+struct OpenGLBackend::Functions {
+    PFNGLCREATESHADERPROC CreateShader = nullptr;
+    PFNGLSHADERSOURCEPROC ShaderSource = nullptr;
+    PFNGLCOMPILESHADERPROC CompileShader = nullptr;
+    PFNGLGETSHADERIVPROC GetShaderiv = nullptr;
+    PFNGLGETSHADERINFOLOGPROC GetShaderInfoLog = nullptr;
+    PFNGLDELETESHADERPROC DeleteShader = nullptr;
 
-    SAO_GL_FUNCTION(const unsigned char*, GetString, (GLenum));
-    SAO_GL_FUNCTION(GLuint, CreateShader, (GLenum));
-    SAO_GL_FUNCTION(void, ShaderSource,
-        (GLuint, GLsizei, const GLchar* const*, const GLint*));
-    SAO_GL_FUNCTION(void, CompileShader, (GLuint));
-    SAO_GL_FUNCTION(void, GetShaderiv, (GLuint, GLenum, GLint*));
-    SAO_GL_FUNCTION(void, GetShaderInfoLog,
-        (GLuint, GLsizei, GLsizei*, GLchar*));
-    SAO_GL_FUNCTION(void, DeleteShader, (GLuint));
+    PFNGLCREATEPROGRAMPROC CreateProgram = nullptr;
+    PFNGLATTACHSHADERPROC AttachShader = nullptr;
+    PFNGLLINKPROGRAMPROC LinkProgram = nullptr;
+    PFNGLGETPROGRAMIVPROC GetProgramiv = nullptr;
+    PFNGLGETPROGRAMINFOLOGPROC GetProgramInfoLog = nullptr;
+    PFNGLDELETEPROGRAMPROC DeleteProgram = nullptr;
+    PFNGLUSEPROGRAMPROC UseProgram = nullptr;
 
-    SAO_GL_FUNCTION(GLuint, CreateProgram, ());
-    SAO_GL_FUNCTION(void, AttachShader, (GLuint, GLuint));
-    SAO_GL_FUNCTION(void, LinkProgram, (GLuint));
-    SAO_GL_FUNCTION(void, GetProgramiv, (GLuint, GLenum, GLint*));
-    SAO_GL_FUNCTION(void, GetProgramInfoLog,
-        (GLuint, GLsizei, GLsizei*, GLchar*));
-    SAO_GL_FUNCTION(void, DeleteProgram, (GLuint));
-    SAO_GL_FUNCTION(void, UseProgram, (GLuint));
+    PFNGLGENBUFFERSPROC GenBuffers = nullptr;
+    PFNGLDELETEBUFFERSPROC DeleteBuffers = nullptr;
+    PFNGLBINDBUFFERPROC BindBuffer = nullptr;
+    PFNGLBUFFERDATAPROC BufferData = nullptr;
 
-    SAO_GL_FUNCTION(void, Enable, (GLenum));
-    SAO_GL_FUNCTION(void, Disable, (GLenum));
-    SAO_GL_FUNCTION(void, DepthMask, (GLboolean));
-    SAO_GL_FUNCTION(void, DepthFunc, (GLenum));
-    SAO_GL_FUNCTION(void, CullFace, (GLenum));
-    SAO_GL_FUNCTION(void, FrontFace, (GLenum));
-    SAO_GL_FUNCTION(void, BlendFuncSeparate,
-        (GLenum, GLenum, GLenum, GLenum));
-    SAO_GL_FUNCTION(void, BlendEquationSeparate,
-        (GLenum, GLenum));
-    SAO_GL_FUNCTION(void, PolygonMode, (GLenum, GLenum));
+    PFNGLGENVERTEXARRAYSPROC GenVertexArrays = nullptr;
+    PFNGLDELETEVERTEXARRAYSPROC DeleteVertexArrays = nullptr;
+    PFNGLBINDVERTEXARRAYPROC BindVertexArray = nullptr;
+    PFNGLENABLEVERTEXATTRIBARRAYPROC EnableVertexAttribArray = nullptr;
+    PFNGLVERTEXATTRIBPOINTERPROC VertexAttribPointer = nullptr;
 
-    SAO_GL_FUNCTION(void, ActiveTexture, (GLenum));
-    SAO_GL_FUNCTION(void, GenSamplers, (GLsizei, GLuint*));
-    SAO_GL_FUNCTION(void, DeleteSamplers, (GLsizei, const GLuint*));
-    SAO_GL_FUNCTION(void, SamplerParameteri,
-        (GLuint, GLenum, GLint));
-    SAO_GL_FUNCTION(void, SamplerParameterf,
-        (GLuint, GLenum, GLfloat));
-    SAO_GL_FUNCTION(void, BindSampler, (GLuint, GLuint));
+    PFNGLDRAWELEMENTSPROC DrawElements = nullptr;
 
-#undef SAO_GL_FUNCTION
+    PFNGLGENTEXTURESPROC GenTextures = nullptr;
+    PFNGLDELETETEXTURESPROC DeleteTextures = nullptr;
+    PFNGLBINDTEXTUREPROC BindTexture = nullptr;
+    PFNGLTEXIMAGE2DPROC TexImage2D = nullptr;
+    PFNGLTEXPARAMETERIPROC TexParameteri = nullptr;
+    PFNGLACTIVETEXTUREPROC ActiveTexture = nullptr;
+    PFNGLPIXELSTOREIPROC PixelStorei = nullptr;
+
+    PFNGLGENSAMPLERSPROC GenSamplers = nullptr;
+    PFNGLDELETESAMPLERSPROC DeleteSamplers = nullptr;
+    PFNGLSAMPLERPARAMETERIPROC SamplerParameteri = nullptr;
+    PFNGLBINDSAMPLERPROC BindSampler = nullptr;
+
+    PFNGLBLENDFUNCSEPARATEPROC BlendFuncSeparate = nullptr;
+    PFNGLBLENDEQUATIONSEPARATEPROC BlendEquationSeparate = nullptr;
+    PFNGLDEPTHFUNCPROC DepthFunc = nullptr;
+    PFNGLDEPTHMASKPROC DepthMask = nullptr;
+    PFNGLCULLFACEPROC CullFace = nullptr;
+    PFNGLFRONTFACEPROC FrontFace = nullptr;
+    PFNGLPOLYGONMODEPROC PolygonMode = nullptr;
+
+    PFNGLGETUNIFORMLOCATIONPROC GetUniformLocation = nullptr;
+    PFNGLUNIFORM1IPROC Uniform1i = nullptr;
+    PFNGLUNIFORM1FPROC Uniform1f = nullptr;
+    PFNGLUNIFORM3FPROC Uniform3f = nullptr;
+    PFNGLUNIFORMMATRIX4FVPROC UniformMatrix4fv = nullptr;
+
+    PFNGLVIEWPORTPROC Viewport = nullptr;
+    PFNGLCLEARCOLORPROC ClearColor = nullptr;
+    PFNGLCLEARPROC Clear = nullptr;
 };
 
 OpenGLBackend::OpenGLBackend(Win32Window& window)
     : window_(window) {
+    gl_ = new Functions();
 }
 
 OpenGLBackend::~OpenGLBackend() {
     shutdown();
+    delete gl_;
+    gl_ = nullptr;
 }
 
 const char* OpenGLBackend::name() const noexcept {
     return "OpenGL 3.3 Core (WGL)";
 }
 
-bool OpenGLBackend::is_available() const noexcept {
-    return initialized_ && rendering_context_ != nullptr;
+const std::string& OpenGLBackend::last_error() const noexcept {
+    return last_error_;
 }
 
-const std::string& OpenGLBackend::renderer_name() const noexcept {
-    return renderer_name_;
+void OpenGLBackend::set_error(const std::string& message) {
+    last_error_ = message;
 }
 
-const std::string& OpenGLBackend::version_string() const noexcept {
-    return version_string_;
+OpenGLBackend::GLProc OpenGLBackend::load_function(
+    const char* name
+) {
+    PROC proc = wglGetProcAddress(name);
+
+    const auto value = reinterpret_cast<std::intptr_t>(proc);
+
+    if (!proc || value == 1 || value == 2 ||
+        value == 3 || value == -1) {
+        HMODULE module = GetModuleHandleW(L"opengl32.dll");
+
+        if (!module) {
+            module = LoadLibraryW(L"opengl32.dll");
+        }
+
+        if (module) {
+            proc = reinterpret_cast<PROC>(
+                GetProcAddress(module, name)
+            );
+        }
+    }
+
+    return proc;
 }
 
-bool OpenGLBackend::create_context(std::string& error) {
-    HWND hwnd = window_.native_handle();
+bool OpenGLBackend::create_context() {
+    hwnd_ = window_.native_handle();
 
-    if (!hwnd) {
-        error = "The Win32 window has no native handle.";
+    if (!hwnd_) {
+        set_error("The Win32 window has no native handle.");
         return false;
     }
 
-    device_context_ = GetDC(hwnd);
+    device_context_ = GetDC(hwnd_);
 
     if (!device_context_) {
-        error = "Could not acquire the window device context.";
+        set_error("GetDC failed for the Sao-2X window.");
         return false;
     }
 
-    PIXELFORMATDESCRIPTOR pixel_format{};
-    pixel_format.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-    pixel_format.nVersion = 1;
-    pixel_format.dwFlags =
+    PIXELFORMATDESCRIPTOR descriptor{};
+    descriptor.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    descriptor.nVersion = 1;
+    descriptor.dwFlags =
         PFD_DRAW_TO_WINDOW |
         PFD_SUPPORT_OPENGL |
         PFD_DOUBLEBUFFER;
-    pixel_format.iPixelType = PFD_TYPE_RGBA;
-    pixel_format.cColorBits = 32;
-    pixel_format.cAlphaBits = 8;
-    pixel_format.cDepthBits = 24;
-    pixel_format.cStencilBits = 8;
-    pixel_format.iLayerType = PFD_MAIN_PLANE;
 
-    const int format = ChoosePixelFormat(
+    descriptor.iPixelType = PFD_TYPE_RGBA;
+    descriptor.cColorBits = 32;
+    descriptor.cAlphaBits = 8;
+    descriptor.cDepthBits = 24;
+    descriptor.cStencilBits = 8;
+    descriptor.iLayerType = PFD_MAIN_PLANE;
+
+    const int pixel_format = ChoosePixelFormat(
         device_context_,
-        &pixel_format
+        &descriptor
     );
 
-    if (format == 0) {
-        error = "Could not choose a Windows OpenGL pixel format.";
+    if (pixel_format == 0) {
+        set_error("ChoosePixelFormat failed.");
         return false;
     }
 
-    if (!SetPixelFormat(device_context_, format, &pixel_format)) {
-        error = "Could not set the Windows OpenGL pixel format.";
+    if (!SetPixelFormat(
+        device_context_,
+        pixel_format,
+        &descriptor
+    )) {
+        set_error("SetPixelFormat failed.");
         return false;
     }
 
     HGLRC temporary_context = wglCreateContext(device_context_);
 
     if (!temporary_context) {
-        error = "Could not create the temporary WGL context.";
+        set_error("Failed to create the temporary WGL context.");
         return false;
     }
 
     if (!wglMakeCurrent(device_context_, temporary_context)) {
         wglDeleteContext(temporary_context);
-        error = "Could not activate the temporary WGL context.";
+        set_error("Failed to activate the temporary WGL context.");
         return false;
     }
 
-    auto create_context = reinterpret_cast<CreateContextAttribsARB>(
-        wglGetProcAddress("wglCreateContextAttribsARB")
-    );
+    auto create_context_function =
+        reinterpret_cast<WglCreateContextAttribsARB>(
+            wglGetProcAddress("wglCreateContextAttribsARB")
+        );
 
-    if (!create_context) {
+    if (!create_context_function) {
         wglMakeCurrent(nullptr, nullptr);
         wglDeleteContext(temporary_context);
-        error = "WGL_ARB_create_context is unavailable.";
+
+        set_error(
+            "WGL_ARB_create_context is unavailable. "
+            "OpenGL 3.3 Core cannot be created."
+        );
+
         return false;
     }
 
     const int attributes[] = {
-        WGL_CONTEXT_MAJOR_VERSION_VALUE, 3,
-        WGL_CONTEXT_MINOR_VERSION_VALUE, 3,
-        WGL_CONTEXT_PROFILE_MASK_VALUE,
-        WGL_CONTEXT_CORE_PROFILE_BIT_VALUE,
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+        WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+        WGL_CONTEXT_PROFILE_MASK_ARB,
+        WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
         0
     };
 
-    HGLRC modern_context = create_context(
+    context_ = create_context_function(
         device_context_,
         nullptr,
         attributes
     );
 
-    if (!modern_context) {
-        wglMakeCurrent(nullptr, nullptr);
-        wglDeleteContext(temporary_context);
-        error = "The graphics driver could not create an OpenGL 3.3 Core context.";
-        return false;
-    }
-
     wglMakeCurrent(nullptr, nullptr);
     wglDeleteContext(temporary_context);
 
-    rendering_context_ = modern_context;
+    if (!context_) {
+        set_error("Failed to create an OpenGL 3.3 Core context.");
+        return false;
+    }
 
-    if (!wglMakeCurrent(device_context_, rendering_context_)) {
-        error = "Could not activate the OpenGL 3.3 context.";
+    if (!wglMakeCurrent(device_context_, context_)) {
+        set_error("Failed to activate the OpenGL 3.3 context.");
         return false;
     }
 
     return true;
 }
 
-bool OpenGLBackend::load_functions(std::string& error) {
-    gl_ = std::make_unique<GLFunctions>();
-
-#define SAO_LOAD_GL(name) \
-    gl_->name = reinterpret_cast<GLFunctions::name##Type>( \
-        load_gl_proc("gl" #name) \
-    ); \
-    if (!gl_->name) { \
-        error = "Missing OpenGL function: gl" #name; \
-        return false; \
+#define SAO_LOAD_GL(member, type, symbol)                    \
+    gl_->member = reinterpret_cast<type>(load_function(symbol)); \
+    if (!gl_->member) {                                      \
+        set_error("Failed to load OpenGL function: " symbol); \
+        return false;                                        \
     }
 
-    SAO_LOAD_GL(GetString)
-    SAO_LOAD_GL(CreateShader)
-    SAO_LOAD_GL(ShaderSource)
-    SAO_LOAD_GL(CompileShader)
-    SAO_LOAD_GL(GetShaderiv)
-    SAO_LOAD_GL(GetShaderInfoLog)
-    SAO_LOAD_GL(DeleteShader)
+bool OpenGLBackend::load_functions() {
+    SAO_LOAD_GL(CreateShader, PFNGLCREATESHADERPROC, "glCreateShader");
+    SAO_LOAD_GL(ShaderSource, PFNGLSHADERSOURCEPROC, "glShaderSource");
+    SAO_LOAD_GL(CompileShader, PFNGLCOMPILESHADERPROC, "glCompileShader");
+    SAO_LOAD_GL(GetShaderiv, PFNGLGETSHADERIVPROC, "glGetShaderiv");
+    SAO_LOAD_GL(GetShaderInfoLog, PFNGLGETSHADERINFOLOGPROC, "glGetShaderInfoLog");
+    SAO_LOAD_GL(DeleteShader, PFNGLDELETESHADERPROC, "glDeleteShader");
 
-    SAO_LOAD_GL(CreateProgram)
-    SAO_LOAD_GL(AttachShader)
-    SAO_LOAD_GL(LinkProgram)
-    SAO_LOAD_GL(GetProgramiv)
-    SAO_LOAD_GL(GetProgramInfoLog)
-    SAO_LOAD_GL(DeleteProgram)
-    SAO_LOAD_GL(UseProgram)
+    SAO_LOAD_GL(CreateProgram, PFNGLCREATEPROGRAMPROC, "glCreateProgram");
+    SAO_LOAD_GL(AttachShader, PFNGLATTACHSHADERPROC, "glAttachShader");
+    SAO_LOAD_GL(LinkProgram, PFNGLLINKPROGRAMPROC, "glLinkProgram");
+    SAO_LOAD_GL(GetProgramiv, PFNGLGETPROGRAMIVPROC, "glGetProgramiv");
+    SAO_LOAD_GL(GetProgramInfoLog, PFNGLGETPROGRAMINFOLOGPROC, "glGetProgramInfoLog");
+    SAO_LOAD_GL(DeleteProgram, PFNGLDELETEPROGRAMPROC, "glDeleteProgram");
+    SAO_LOAD_GL(UseProgram, PFNGLUSEPROGRAMPROC, "glUseProgram");
 
-    SAO_LOAD_GL(Enable)
-    SAO_LOAD_GL(Disable)
-    SAO_LOAD_GL(DepthMask)
-    SAO_LOAD_GL(DepthFunc)
-    SAO_LOAD_GL(CullFace)
-    SAO_LOAD_GL(FrontFace)
-    SAO_LOAD_GL(BlendFuncSeparate)
-    SAO_LOAD_GL(BlendEquationSeparate)
-    SAO_LOAD_GL(PolygonMode)
+    SAO_LOAD_GL(GenBuffers, PFNGLGENBUFFERSPROC, "glGenBuffers");
+    SAO_LOAD_GL(DeleteBuffers, PFNGLDELETEBUFFERSPROC, "glDeleteBuffers");
+    SAO_LOAD_GL(BindBuffer, PFNGLBINDBUFFERPROC, "glBindBuffer");
+    SAO_LOAD_GL(BufferData, PFNGLBUFFERDATAPROC, "glBufferData");
 
-    SAO_LOAD_GL(ActiveTexture)
-    SAO_LOAD_GL(GenSamplers)
-    SAO_LOAD_GL(DeleteSamplers)
-    SAO_LOAD_GL(SamplerParameteri)
-    SAO_LOAD_GL(SamplerParameterf)
-    SAO_LOAD_GL(BindSampler)
+    SAO_LOAD_GL(GenVertexArrays, PFNGLGENVERTEXARRAYSPROC, "glGenVertexArrays");
+    SAO_LOAD_GL(DeleteVertexArrays, PFNGLDELETEVERTEXARRAYSPROC, "glDeleteVertexArrays");
+    SAO_LOAD_GL(BindVertexArray, PFNGLBINDVERTEXARRAYPROC, "glBindVertexArray");
+    SAO_LOAD_GL(EnableVertexAttribArray, PFNGLENABLEVERTEXATTRIBARRAYPROC, "glEnableVertexAttribArray");
+    SAO_LOAD_GL(VertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC, "glVertexAttribPointer");
 
-#undef SAO_LOAD_GL
+    SAO_LOAD_GL(DrawElements, PFNGLDRAWELEMENTSPROC, "glDrawElements");
 
-    const auto* renderer = gl_->GetString(GL_RENDERER_VALUE);
-    const auto* version = gl_->GetString(GL_VERSION_VALUE);
+    SAO_LOAD_GL(GenTextures, PFNGLGENTEXTURESPROC, "glGenTextures");
+    SAO_LOAD_GL(DeleteTextures, PFNGLDELETETEXTURESPROC, "glDeleteTextures");
+    SAO_LOAD_GL(BindTexture, PFNGLBINDTEXTUREPROC, "glBindTexture");
+    SAO_LOAD_GL(TexImage2D, PFNGLTEXIMAGE2DPROC, "glTexImage2D");
+    SAO_LOAD_GL(TexParameteri, PFNGLTEXPARAMETERIPROC, "glTexParameteri");
+    SAO_LOAD_GL(ActiveTexture, PFNGLACTIVETEXTUREPROC, "glActiveTexture");
+    SAO_LOAD_GL(PixelStorei, PFNGLPIXELSTOREIPROC, "glPixelStorei");
 
-    renderer_name_ = renderer
-        ? reinterpret_cast<const char*>(renderer)
-        : "Unknown OpenGL renderer";
+    SAO_LOAD_GL(GenSamplers, PFNGLGENSAMPLERSPROC, "glGenSamplers");
+    SAO_LOAD_GL(DeleteSamplers, PFNGLDELETESAMPLERSPROC, "glDeleteSamplers");
+    SAO_LOAD_GL(SamplerParameteri, PFNGLSAMPLERPARAMETERIPROC, "glSamplerParameteri");
+    SAO_LOAD_GL(BindSampler, PFNGLBINDSAMPLERPROC, "glBindSampler");
 
-    version_string_ = version
-        ? reinterpret_cast<const char*>(version)
-        : "Unknown OpenGL version";
+    SAO_LOAD_GL(BlendFuncSeparate, PFNGLBLENDFUNCSEPARATEPROC, "glBlendFuncSeparate");
+    SAO_LOAD_GL(BlendEquationSeparate, PFNGLBLENDEQUATIONSEPARATEPROC, "glBlendEquationSeparate");
+    SAO_LOAD_GL(DepthFunc, PFNGLDEPTHFUNCPROC, "glDepthFunc");
+    SAO_LOAD_GL(DepthMask, PFNGLDEPTHMASKPROC, "glDepthMask");
+    SAO_LOAD_GL(CullFace, PFNGLCULLFACEPROC, "glCullFace");
+    SAO_LOAD_GL(FrontFace, PFNGLFRONTFACEPROC, "glFrontFace");
+    SAO_LOAD_GL(PolygonMode, PFNGLPOLYGONMODEPROC, "glPolygonMode");
+
+    SAO_LOAD_GL(GetUniformLocation, PFNGLGETUNIFORMLOCATIONPROC, "glGetUniformLocation");
+    SAO_LOAD_GL(Uniform1i, PFNGLUNIFORM1IPROC, "glUniform1i");
+    SAO_LOAD_GL(Uniform1f, PFNGLUNIFORM1FPROC, "glUniform1f");
+    SAO_LOAD_GL(Uniform3f, PFNGLUNIFORM3FPROC, "glUniform3f");
+    SAO_LOAD_GL(UniformMatrix4fv, PFNGLUNIFORMMATRIX4FVPROC, "glUniformMatrix4fv");
+
+    SAO_LOAD_GL(Viewport, PFNGLVIEWPORTPROC, "glViewport");
+    SAO_LOAD_GL(ClearColor, PFNGLCLEARCOLORPROC, "glClearColor");
+    SAO_LOAD_GL(Clear, PFNGLCLEARPROC, "glClear");
 
     return true;
 }
+
+#undef SAO_LOAD_GL
 
 bool OpenGLBackend::initialize() {
     if (initialized_) {
         return true;
     }
 
-    std::string error;
+    last_error_.clear();
 
-    if (!create_context(error)) {
+    if (!create_context()) {
         shutdown();
         return false;
     }
 
-    if (!load_functions(error)) {
+    if (!load_functions()) {
         shutdown();
         return false;
     }
+
+    const char* version = reinterpret_cast<const char*>(
+        glGetString(GL_VERSION)
+    );
+
+    if (!version) {
+        set_error("OpenGL did not return a version string.");
+        shutdown();
+        return false;
+    }
+
+    sampler_objects_.resize(16, 0);
 
     initialized_ = true;
+
+    set_viewport(
+        window_.size().width,
+        window_.size().height
+    );
+
     return true;
 }
 
-void OpenGLBackend::destroy_context() noexcept {
-    if (wglGetCurrentContext() == rendering_context_) {
-        wglMakeCurrent(nullptr, nullptr);
-    }
-
-    if (rendering_context_) {
-        wglDeleteContext(rendering_context_);
-        rendering_context_ = nullptr;
-    }
-
-    if (device_context_) {
-        if (window_.native_handle()) {
-            ReleaseDC(window_.native_handle(), device_context_);
-        }
-
-        device_context_ = nullptr;
-    }
-}
-
 void OpenGLBackend::shutdown() {
-    if (rendering_context_ && device_context_) {
-        wglMakeCurrent(device_context_, rendering_context_);
+    if (context_ && device_context_) {
+        wglMakeCurrent(device_context_, context_);
 
-        if (gl_) {
-            for (const auto& entry : sampler_objects_) {
-                const GLuint sampler = entry.second;
-                gl_->DeleteSamplers(1, &sampler);
+        if (gl_ && gl_->DeleteSamplers) {
+            for (unsigned int sampler : sampler_objects_) {
+                if (sampler != 0) {
+                    gl_->DeleteSamplers(1, &sampler);
+                }
             }
         }
+
+        sampler_objects_.clear();
+
+        wglMakeCurrent(nullptr, nullptr);
+        wglDeleteContext(context_);
+        context_ = nullptr;
     }
 
-    sampler_objects_.clear();
+    if (device_context_ && hwnd_) {
+        ReleaseDC(hwnd_, device_context_);
+    }
 
-    destroy_context();
-
-    gl_.reset();
-
-    renderer_name_.clear();
-    version_string_.clear();
-
+    device_context_ = nullptr;
+    hwnd_ = nullptr;
     initialized_ = false;
+}
+
+bool OpenGLBackend::make_current() {
+    if (!context_ || !device_context_) {
+        return false;
+    }
+
+    return wglMakeCurrent(device_context_, context_) == TRUE;
+}
+
+void OpenGLBackend::present() {
+    if (!initialized_ || !make_current()) {
+        return;
+    }
+
+    SwapBuffers(device_context_);
+}
+
+void OpenGLBackend::set_viewport(int width, int height) {
+    if (!initialized_ || !make_current() || width <= 0 || height <= 0) {
+        return;
+    }
+
+    gl_->Viewport(0, 0, width, height);
+}
+
+void OpenGLBackend::clear(
+    float r,
+    float g,
+    float b,
+    float a
+) {
+    if (!initialized_ || !make_current()) {
+        return;
+    }
+
+    gl_->ClearColor(r, g, b, a);
+    gl_->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 bool OpenGLBackend::compile_shader(
@@ -524,61 +858,38 @@ bool OpenGLBackend::compile_shader(
 ) {
     shader_handle = 0;
 
-    if (!initialized_ || !gl_) {
-        log = "OpenGL backend is not initialized.";
+    if (!initialized_ || !make_current()) {
+        log = "OpenGL context is not active.";
         return false;
     }
 
-    GLenum gl_stage = 0;
+    const GLenum gl_stage = shader_stage_to_gl(stage);
 
-    switch (stage) {
-        case ShaderStage::Vertex:
-            gl_stage = GL_VERTEX_SHADER_VALUE;
-            break;
-
-        case ShaderStage::Fragment:
-            gl_stage = GL_FRAGMENT_SHADER_VALUE;
-            break;
-
-        case ShaderStage::Geometry:
-            gl_stage = GL_GEOMETRY_SHADER_VALUE;
-            break;
-
-        case ShaderStage::Compute:
-            log = "Compute shaders require OpenGL 4.3 or newer.";
-            return false;
+    if (gl_stage == 0) {
+        log = "This OpenGL backend does not support compute shaders.";
+        return false;
     }
 
     const GLuint shader = gl_->CreateShader(gl_stage);
 
-    if (shader == 0) {
-        log = "OpenGL could not create the shader object.";
+    if (!shader) {
+        log = "glCreateShader failed.";
         return false;
     }
 
-    const GLchar* source_pointer = source.c_str();
-    const GLint source_length = static_cast<GLint>(source.size());
+    const char* source_pointer = source.c_str();
 
-    gl_->ShaderSource(
-        shader,
-        1,
-        &source_pointer,
-        &source_length
-    );
-
+    gl_->ShaderSource(shader, 1, &source_pointer, nullptr);
     gl_->CompileShader(shader);
 
-    GLint success = 0;
-    gl_->GetShaderiv(shader, GL_COMPILE_STATUS_VALUE, &success);
+    GLint status = 0;
+    gl_->GetShaderiv(shader, GL_COMPILE_STATUS, &status);
 
     GLint log_length = 0;
-    gl_->GetShaderiv(shader, GL_INFO_LOG_LENGTH_VALUE, &log_length);
+    gl_->GetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
 
     if (log_length > 1) {
-        std::vector<GLchar> message(
-            static_cast<std::size_t>(log_length),
-            '\0'
-        );
+        log.resize(static_cast<std::size_t>(log_length));
 
         GLsizei written = 0;
 
@@ -586,22 +897,18 @@ bool OpenGLBackend::compile_shader(
             shader,
             log_length,
             &written,
-            message.data()
+            &log[0]
         );
 
-        log.assign(
-            message.data(),
-            static_cast<std::size_t>(std::max<GLsizei>(0, written))
-        );
+        log.resize(static_cast<std::size_t>(
+            std::max<GLsizei>(0, written)
+        ));
+    } else {
+        log.clear();
     }
 
-    if (!success) {
+    if (!status) {
         gl_->DeleteShader(shader);
-
-        if (log.empty()) {
-            log = "OpenGL shader compilation failed.";
-        }
-
         return false;
     }
 
@@ -610,7 +917,7 @@ bool OpenGLBackend::compile_shader(
 }
 
 void OpenGLBackend::destroy_shader(std::uint32_t handle) {
-    if (initialized_ && gl_ && handle != 0) {
+    if (initialized_ && handle && make_current()) {
         gl_->DeleteShader(handle);
     }
 }
@@ -621,19 +928,19 @@ bool OpenGLBackend::create_program(
 ) {
     program_handle = 0;
 
-    if (!initialized_ || !gl_) {
-        log = "OpenGL backend is not initialized.";
+    if (!initialized_ || !make_current()) {
+        log = "OpenGL context is not active.";
         return false;
     }
 
-    const GLuint program = gl_->CreateProgram();
+    program_handle = gl_->CreateProgram();
 
-    if (program == 0) {
-        log = "OpenGL could not create a shader program.";
+    if (!program_handle) {
+        log = "glCreateProgram failed.";
         return false;
     }
 
-    program_handle = program;
+    log.clear();
     return true;
 }
 
@@ -642,13 +949,14 @@ bool OpenGLBackend::attach_shader(
     std::uint32_t shader_handle,
     std::string& log
 ) {
-    if (!initialized_ || !gl_ ||
-        program_handle == 0 || shader_handle == 0) {
+    if (!initialized_ || !make_current() ||
+        !program_handle || !shader_handle) {
         log = "Invalid OpenGL program or shader handle.";
         return false;
     }
 
     gl_->AttachShader(program_handle, shader_handle);
+    log.clear();
     return true;
 }
 
@@ -656,32 +964,21 @@ bool OpenGLBackend::link_program(
     std::uint32_t program_handle,
     std::string& log
 ) {
-    if (!initialized_ || !gl_ || program_handle == 0) {
+    if (!initialized_ || !make_current() || !program_handle) {
         log = "Invalid OpenGL program handle.";
         return false;
     }
 
     gl_->LinkProgram(program_handle);
 
-    GLint success = 0;
-    gl_->GetProgramiv(
-        program_handle,
-        GL_LINK_STATUS_VALUE,
-        &success
-    );
+    GLint status = 0;
+    gl_->GetProgramiv(program_handle, GL_LINK_STATUS, &status);
 
     GLint log_length = 0;
-    gl_->GetProgramiv(
-        program_handle,
-        GL_INFO_LOG_LENGTH_VALUE,
-        &log_length
-    );
+    gl_->GetProgramiv(program_handle, GL_INFO_LOG_LENGTH, &log_length);
 
     if (log_length > 1) {
-        std::vector<GLchar> message(
-            static_cast<std::size_t>(log_length),
-            '\0'
-        );
+        log.resize(static_cast<std::size_t>(log_length));
 
         GLsizei written = 0;
 
@@ -689,98 +986,89 @@ bool OpenGLBackend::link_program(
             program_handle,
             log_length,
             &written,
-            message.data()
+            &log[0]
         );
 
-        log.assign(
-            message.data(),
-            static_cast<std::size_t>(std::max<GLsizei>(0, written))
-        );
+        log.resize(static_cast<std::size_t>(
+            std::max<GLsizei>(0, written)
+        ));
+    } else {
+        log.clear();
     }
 
-    if (!success) {
-        if (log.empty()) {
-            log = "OpenGL shader program linking failed.";
-        }
-
-        return false;
-    }
-
-    return true;
+    return status != 0;
 }
 
 void OpenGLBackend::destroy_program(std::uint32_t handle) {
-    if (initialized_ && gl_ && handle != 0) {
+    if (initialized_ && handle && make_current()) {
         gl_->DeleteProgram(handle);
     }
 }
 
 void OpenGLBackend::use_program(std::uint32_t handle) {
-    if (initialized_ && gl_) {
+    if (initialized_ && make_current()) {
         gl_->UseProgram(handle);
     }
 }
 
-void OpenGLBackend::apply_render_state(
-    const RenderState& state
-) {
-    if (!initialized_ || !gl_) {
+void OpenGLBackend::apply_render_state(const RenderState& state) {
+    if (!initialized_ || !make_current()) {
         return;
     }
 
     if (state.depth_test_enabled) {
-        gl_->Enable(GL_DEPTH_TEST_VALUE);
+        glEnable(GL_DEPTH_TEST);
     } else {
-        gl_->Disable(GL_DEPTH_TEST_VALUE);
+        glDisable(GL_DEPTH_TEST);
     }
 
-    gl_->DepthMask(state.depth_write_enabled ? 1 : 0);
-    gl_->DepthFunc(to_gl_depth_function(state.depth_function));
+    gl_->DepthMask(state.depth_write_enabled ? GL_TRUE : GL_FALSE);
+    gl_->DepthFunc(depth_function_to_gl(state.depth_function));
 
     if (state.face_culling_enabled &&
         state.cull_mode != CullMode::None) {
-        gl_->Enable(GL_CULL_FACE_VALUE);
+        glEnable(GL_CULL_FACE);
 
-        GLenum mode = GL_BACK_VALUE;
+        GLenum mode = GL_BACK;
 
         if (state.cull_mode == CullMode::Front) {
-            mode = GL_FRONT_VALUE;
+            mode = GL_FRONT;
         } else if (state.cull_mode == CullMode::FrontAndBack) {
-            mode = GL_FRONT_AND_BACK_VALUE;
+            mode = GL_FRONT_AND_BACK;
         }
 
         gl_->CullFace(mode);
     } else {
-        gl_->Disable(GL_CULL_FACE_VALUE);
+        glDisable(GL_CULL_FACE);
     }
 
     gl_->FrontFace(
         state.front_face == FrontFace::Clockwise
-            ? GL_CW_VALUE
-            : GL_CCW_VALUE
+            ? GL_CW
+            : GL_CCW
     );
 
     if (state.blending.enabled) {
-        gl_->Enable(GL_BLEND_VALUE);
+        glEnable(GL_BLEND);
 
         gl_->BlendFuncSeparate(
-            to_gl_blend_factor(state.blending.source_color),
-            to_gl_blend_factor(state.blending.destination_color),
-            to_gl_blend_factor(state.blending.source_alpha),
-            to_gl_blend_factor(state.blending.destination_alpha)
+            blend_factor_to_gl(state.blending.source_color),
+            blend_factor_to_gl(state.blending.destination_color),
+            blend_factor_to_gl(state.blending.source_alpha),
+            blend_factor_to_gl(state.blending.destination_alpha)
         );
 
         gl_->BlendEquationSeparate(
-            to_gl_blend_operation(state.blending.color_operation),
-            to_gl_blend_operation(state.blending.alpha_operation)
+            blend_operation_to_gl(state.blending.color_operation),
+            blend_operation_to_gl(state.blending.alpha_operation)
         );
     } else {
-        gl_->Disable(GL_BLEND_VALUE);
+        glDisable(GL_BLEND);
     }
 
     gl_->PolygonMode(
-        GL_FRONT_AND_BACK_VALUE,
-        state.wireframe ? GL_LINE_VALUE : GL_FILL_VALUE
+        GL_FRONT_AND_BACK,
+        state.wireframe ? GL_LINE : GL_FILL
     );
 }
 
@@ -788,65 +1076,293 @@ void OpenGLBackend::apply_texture_sampler(
     unsigned int texture_unit,
     const TextureSampler& sampler
 ) {
-    if (!initialized_ || !gl_) {
+    if (!initialized_ || !make_current() ||
+        texture_unit >= sampler_objects_.size()) {
         return;
     }
 
-    GLuint sampler_object = 0;
+    unsigned int& handle = sampler_objects_[texture_unit];
 
-    auto existing = sampler_objects_.find(texture_unit);
+    if (!handle) {
+        gl_->GenSamplers(1, &handle);
+    }
 
-    if (existing == sampler_objects_.end()) {
-        gl_->GenSamplers(1, &sampler_object);
-
-        if (sampler_object == 0) {
-            return;
-        }
-
-        sampler_objects_[texture_unit] = sampler_object;
-    } else {
-        sampler_object = existing->second;
+    if (!handle) {
+        return;
     }
 
     gl_->SamplerParameteri(
-        sampler_object,
-        GL_TEXTURE_MIN_FILTER_VALUE,
-        static_cast<GLint>(to_gl_texture_filter(sampler.min_filter))
+        handle,
+        GL_TEXTURE_MIN_FILTER,
+        static_cast<GLint>(texture_filter_to_gl(sampler.min_filter))
     );
 
     gl_->SamplerParameteri(
-        sampler_object,
-        GL_TEXTURE_MAG_FILTER_VALUE,
-        static_cast<GLint>(to_gl_texture_filter(sampler.mag_filter))
+        handle,
+        GL_TEXTURE_MAG_FILTER,
+        static_cast<GLint>(texture_filter_to_gl(sampler.mag_filter))
     );
 
     gl_->SamplerParameteri(
-        sampler_object,
-        GL_TEXTURE_WRAP_S_VALUE,
-        static_cast<GLint>(to_gl_texture_wrap(sampler.wrap_u))
+        handle,
+        GL_TEXTURE_WRAP_S,
+        static_cast<GLint>(texture_wrap_to_gl(sampler.wrap_u))
     );
 
     gl_->SamplerParameteri(
-        sampler_object,
-        GL_TEXTURE_WRAP_T_VALUE,
-        static_cast<GLint>(to_gl_texture_wrap(sampler.wrap_v))
+        handle,
+        GL_TEXTURE_WRAP_T,
+        static_cast<GLint>(texture_wrap_to_gl(sampler.wrap_v))
     );
 
-    if (sampler.anisotropy > 1.0f) {
-        gl_->SamplerParameterf(
-            sampler_object,
-            GL_TEXTURE_MAX_ANISOTROPY_EXT_VALUE,
-            sampler.anisotropy
-        );
-    }
-
-    gl_->BindSampler(texture_unit, sampler_object);
+    gl_->BindSampler(texture_unit, handle);
 }
 
-void OpenGLBackend::present() {
-    if (initialized_ && device_context_) {
-        SwapBuffers(device_context_);
+std::uint32_t OpenGLBackend::create_buffer() {
+    if (!initialized_ || !make_current()) {
+        return 0;
     }
+
+    GLuint handle = 0;
+    gl_->GenBuffers(1, &handle);
+    return handle;
+}
+
+void OpenGLBackend::destroy_buffer(std::uint32_t buffer) {
+    if (initialized_ && buffer && make_current()) {
+        gl_->DeleteBuffers(1, &buffer);
+    }
+}
+
+bool OpenGLBackend::upload_array_buffer(
+    std::uint32_t buffer,
+    const void* data,
+    std::size_t size,
+    bool dynamic
+) {
+    if (!initialized_ || !make_current() || !buffer ||
+        size > static_cast<std::size_t>(
+            std::numeric_limits<GLsizeiptr>::max()
+        )) {
+        return false;
+    }
+
+    gl_->BindBuffer(GL_ARRAY_BUFFER, buffer);
+
+    gl_->BufferData(
+        GL_ARRAY_BUFFER,
+        static_cast<GLsizeiptr>(size),
+        data,
+        dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW
+    );
+
+    return true;
+}
+
+bool OpenGLBackend::upload_element_buffer(
+    std::uint32_t buffer,
+    const void* data,
+    std::size_t size,
+    bool dynamic
+) {
+    if (!initialized_ || !make_current() || !buffer ||
+        size > static_cast<std::size_t>(
+            std::numeric_limits<GLsizeiptr>::max()
+        )) {
+        return false;
+    }
+
+    gl_->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+
+    gl_->BufferData(
+        GL_ELEMENT_ARRAY_BUFFER,
+        static_cast<GLsizeiptr>(size),
+        data,
+        dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW
+    );
+
+    return true;
+}
+
+std::uint32_t OpenGLBackend::create_vertex_array() {
+    if (!initialized_ || !make_current()) {
+        return 0;
+    }
+
+    GLuint handle = 0;
+    gl_->GenVertexArrays(1, &handle);
+    return handle;
+}
+
+void OpenGLBackend::destroy_vertex_array(std::uint32_t vertex_array) {
+    if (initialized_ && vertex_array && make_current()) {
+        gl_->DeleteVertexArrays(1, &vertex_array);
+    }
+}
+
+void OpenGLBackend::bind_vertex_array(std::uint32_t vertex_array) {
+    if (initialized_ && make_current()) {
+        gl_->BindVertexArray(vertex_array);
+    }
+}
+
+void OpenGLBackend::configure_vertex_attribute(
+    unsigned int index,
+    int component_count,
+    std::size_t stride,
+    std::size_t offset
+) {
+    if (!initialized_ || !make_current()) {
+        return;
+    }
+
+    gl_->EnableVertexAttribArray(index);
+
+    gl_->VertexAttribPointer(
+        index,
+        component_count,
+        GL_FLOAT,
+        GL_FALSE,
+        static_cast<GLsizei>(stride),
+        reinterpret_cast<const void*>(offset)
+    );
+}
+
+void OpenGLBackend::draw_indexed(std::uint32_t index_count) {
+    if (!initialized_ || !make_current() || index_count == 0) {
+        return;
+    }
+
+    gl_->DrawElements(
+        GL_TRIANGLES,
+        static_cast<GLsizei>(index_count),
+        GL_UNSIGNED_INT,
+        nullptr
+    );
+}
+
+std::uint32_t OpenGLBackend::create_texture_2d() {
+    if (!initialized_ || !make_current()) {
+        return 0;
+    }
+
+    GLuint handle = 0;
+    gl_->GenTextures(1, &handle);
+    return handle;
+}
+
+void OpenGLBackend::destroy_texture(std::uint32_t texture) {
+    if (initialized_ && texture && make_current()) {
+        gl_->DeleteTextures(1, &texture);
+    }
+}
+
+bool OpenGLBackend::upload_texture_2d(
+    std::uint32_t texture,
+    int width,
+    int height,
+    const std::uint8_t* rgba_pixels
+) {
+    if (!initialized_ || !make_current() || !texture ||
+        width <= 0 || height <= 0 || !rgba_pixels) {
+        return false;
+    }
+
+    gl_->BindTexture(GL_TEXTURE_2D, texture);
+    gl_->PixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    gl_->TexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA8,
+        width,
+        height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        rgba_pixels
+    );
+
+    return true;
+}
+
+void OpenGLBackend::bind_texture_2d(
+    unsigned int texture_unit,
+    std::uint32_t texture
+) {
+    if (!initialized_ || !make_current()) {
+        return;
+    }
+
+    gl_->ActiveTexture(GL_TEXTURE0 + texture_unit);
+    gl_->BindTexture(GL_TEXTURE_2D, texture);
+}
+
+int OpenGLBackend::uniform_location(
+    std::uint32_t program,
+    const char* name
+) {
+    if (!initialized_ || !make_current() || !name) {
+        return -1;
+    }
+
+    return gl_->GetUniformLocation(program, name);
+}
+
+void OpenGLBackend::uniform_int(int location, int value) {
+    if (initialized_ && location >= 0 && make_current()) {
+        gl_->Uniform1i(location, value);
+    }
+}
+
+void OpenGLBackend::uniform_float(int location, float value) {
+    if (initialized_ && location >= 0 && make_current()) {
+        gl_->Uniform1f(location, value);
+    }
+}
+
+void OpenGLBackend::uniform_vec3(
+    int location,
+    float x,
+    float y,
+    float z
+) {
+    if (initialized_ && location >= 0 && make_current()) {
+        gl_->Uniform3f(location, x, y, z);
+    }
+}
+
+void OpenGLBackend::uniform_mat4(
+    int location,
+    const float* column_major_matrix
+) {
+    if (initialized_ && location >= 0 &&
+        column_major_matrix && make_current()) {
+        gl_->UniformMatrix4fv(
+            location,
+            1,
+            GL_FALSE,
+            column_major_matrix
+        );
+    }
+}
+
+const char* OpenGLBackend::version_string() const noexcept {
+    if (!initialized_) {
+        return "";
+    }
+
+    return reinterpret_cast<const char*>(glGetString(GL_VERSION));
+}
+
+const char* OpenGLBackend::renderer_string() const noexcept {
+    if (!initialized_) {
+        return "";
+    }
+
+    return reinterpret_cast<const char*>(glGetString(GL_RENDERER));
 }
 
 } // namespace sao
+
+#endif
